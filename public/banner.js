@@ -32,7 +32,8 @@
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const go = i => {
       cur = (i + slides.length) % slides.length;
-      track.style.transform = `translateX(-${cur * 100}%)`;
+      // %로 옮기면 소수점 픽셀에 걸려 사진(특히 얼굴)이 흐려져서, 정수 픽셀로 옮긴다
+      track.style.transform = `translateX(-${cur * sec.clientWidth}px)`;
       dots.querySelectorAll('button').forEach((b, k) => b.setAttribute('aria-selected', k === cur ? 'true' : 'false'));
     };
     const stop = () => { clearInterval(timer); timer = null; };
@@ -45,6 +46,7 @@
     document.getElementById('bNext').onclick = () => { go(cur + 1); start(); };
     dots.onclick = e => { const b = e.target.closest('button'); if (b) { go(Number(b.dataset.i)); start(); } };
     document.addEventListener('visibilitychange', start);
+    addEventListener('resize', () => { const t = track.style.transition; track.style.transition = 'none'; go(cur); track.offsetWidth; track.style.transition = t; });
 
     // 손가락으로 밀어서 넘기기
     let x0 = null;
