@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈드랍 예약 챗봇</title>
+<meta name="description" content="집에서 캐리어를 수거해 인천국제공항까지 보내 주는 홈드랍을 대화로 예약하는 데모 서비스">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="hd">
+  <div class="wrap">
+    <a class="logo" href="/">홈드랍 <small>HOME DROP</small></a>
+    <nav class="gnb" aria-label="주요 메뉴">
+      <a href="#chat" aria-current="page">예약 챗봇</a>
+      <a href="#traffic">혼잡 시간대</a>
+      <a href="/admin">관리자 화면</a>
+    </nav>
+    <span class="demo-pill">데모 서비스</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">집에서 공항까지, 짐은 먼저 보내세요</p>
+    <h1>Home Drop</h1>
+    <h2>말로 예약하고, 빈손으로 출국</h2>
+    <p class="lead">「짐 맡기고 싶어요」 한마디면 챗봇이 필요한 것을 하나씩 물어봐요. 수거는 출발 전날, 기사님이 집으로 찾아갑니다.</p>
+    <div class="cta-row">
+      <a class="btn btn-cta" href="#chat">예약 시작하기</a>
+      <a class="btn btn-ghost" href="#traffic">혼잡 시간대 보기</a>
+    </div>
+  </div>
+</section>
+<div class="flow" aria-label="서비스 흐름">
+  <div><b>챗봇으로 예약</b><span>대화로 정보 입력·확인</span><em>이 데모</em></div>
+  <div><b>집에서 수거</b><span>기사 방문, 태그 부착</span><em>관리자</em></div>
+  <div><b>공항으로 이동</b><span>권역별로 묶어 배차</span><em>관리자</em></div>
+  <div><b>공항 인도</b><span>고객은 빈손으로 출국</span></div>
+</div>
+
+<main>
+<section class="sec" id="chat">
+  <div class="wrap">
+    <h2 class="en">Booking Chat</h2>
+    <p class="ko">대화로 예약하기</p>
+    <p class="desc">요금·금지 물품·수거 시간도 물어볼 수 있어요. 답마다 근거 이름이 붙고, 시연용 값에는 「데모 값」이라고 표시해요.</p>
+
+    <div class="chat-grid">
+      <div class="chat" role="region" aria-label="예약 챗봇">
+        <div class="chat-top"><b>홈드랍 예약 챗봇</b><span id="mode" class="mode-chip">연결 전</span></div>
+        <div id="msgs" class="msgs" aria-live="polite"></div>
+        <div id="quick" class="quick"></div>
+        <form id="form" class="composer" autocomplete="off">
+          <input id="input" type="text" maxlength="300" placeholder="메시지를 입력하세요" aria-label="메시지 입력">
+          <button id="send" class="round" type="submit" aria-label="보내기">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <aside class="side">
+        <div class="panel">
+          <h3>예약 진행 단계</h3>
+          <ol id="steps" class="steps"></ol>
+        </div>
+        <div class="panel">
+          <h3>자주 묻는 것</h3>
+          <div class="svc-grid">
+            <button class="svc" data-q="요금이 얼마예요?"><b>요금</b><small>Fare</small>
+              <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="20" cy="20" r="14"/><path d="M20 11v18M15 16c0-2 2-3 5-3s5 1 5 3-2 3-5 4-5 2-5 4 2 3 5 3 5-1 5-3"/></svg></button>
+            <button class="svc" data-q="언제 수거하러 오나요?"><b>수거 시간</b><small>Pickup</small>
+              <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="20" cy="20" r="14"/><path d="M20 11v9l6 4"/></svg></button>
+            <button class="svc" data-q="캐리어에 넣으면 안 되는 물건이 뭐예요?"><b>금지 물품</b><small>Restricted</small>
+              <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="20" cy="20" r="14"/><path d="M10 30L30 10"/></svg></button>
+            <button class="svc" data-q="홈드랍은 어느 지역에서 쓸 수 있나요?"><b>이용 지역</b><small>Area</small>
+              <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 35s11-9.5 11-18a11 11 0 10-22 0c0 8.500 11 18 11 18z"/><circle cx="20" cy="17" r="4"/></svg></button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="traffic">
+  <div class="wrap">
+    <h2 class="en">Traffic Guide</h2>
+    <p class="ko">출국장 혼잡 시간대</p>
+    <p class="desc">시간대별 예상 출국장 승객 수예요. 짙은 초록이 가장 붐비는 세 시간대예요.</p>
+    <div class="toolbar" id="tb">
+      <button class="pill sel" data-t="t1">제1여객터미널</button>
+      <button class="pill" data-t="t2">제2여객터미널</button>
+      <span class="sp"></span>
+      <button class="pill sel" data-d="0" style="min-width:105px;height:40px;font-size:14px">오늘</button>
+      <button class="pill" data-d="1" style="min-width:105px;height:40px;font-size:14px">내일</button>
+    </div>
+    <div id="bars" class="bars" role="img" aria-label="시간대별 예상 출국장 승객 수 막대 그래프"></div>
+    <div id="axis" class="axis" aria-hidden="true"></div>
+    <p class="note" id="trafficNote">불러오는 중…</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <b>홈드랍 예약·안내 챗봇 · 데모 버전</b><br>
+    요금·수거 시각·배차 규칙은 시연용으로 만든 값이에요. 실제 서비스 기준이 아니며, 실제 개인정보는 입력하지 마세요.<br>
+    항공편·혼잡 정보 출처: 인천국제공항공사 공공데이터(여객편 주간 운항 현황, 승객예고).
+  </div>
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "homedrop-chatbot-demo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
+  "engines": { "node": ">=20" }
+}

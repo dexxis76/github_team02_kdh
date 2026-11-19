@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈드랍 관리자 화면</title>
+<meta name="description" content="홈드랍 예약 표와 배차 추천 보드(데모)">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="hd">
+  <div class="wrap">
+    <a class="logo" href="/">홈드랍 <small>HOME DROP</small></a>
+    <nav class="gnb" aria-label="주요 메뉴">
+      <a href="/">예약 챗봇</a>
+      <a href="#board" aria-current="page">관리자 화면</a>
+    </nav>
+    <span class="demo-pill">데모 서비스</span>
+  </div>
+</header>
+
+<main>
+<section class="sec" id="board" style="padding-top:56px">
+  <div class="wrap">
+    <h1 class="en" style="margin:0">Dispatch Board</h1>
+    <p class="ko">예약 표와 배차 보드</p>
+    <p class="desc" id="storage">불러오는 중…</p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <h3 style="font-size:30px;margin:56px 0 4px">배차 추천</h3>
+    <p class="desc" style="margin-top:0">같은 수거일 × 2시간 시간대 × 같은 생활권역을 한 차량에 묶어요. 한 차량 최대 캐리어 40개 (데모 규칙)</p>
+    <div id="veh" class="veh-grid"></div>
+
+    <h3 style="font-size:30px;margin:56px 0 12px">예약 표</h3>
+    <div class="toolbar" id="filter" style="margin-top:0"></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>태그 번호</th><th>예약자</th><th>수거지</th><th>수거 시각</th><th>항공편</th><th>짐</th><th>요금</th><th>상태</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+
+    <h3 style="font-size:30px;margin:56px 0 4px">연결 상태</h3>
+    <p class="desc" style="margin-top:0">키 값은 보여 주지 않고, 이름별로 「값 있음 / 비어 있음」과 마지막 호출 결과만 보여 줘요.</p>
+    <div class="kv" id="conn"></div>
+  </div>
+</section>
+</main>
+<footer><div class="wrap"><b>데모 데이터</b> 표시가 붙은 예약은 시연용으로 만든 가상 예약이에요. 로그인 없이 열리는 데모 화면이라 실제 운영에는 로그인이 필요해요.</div></footer>
+<script src="/admin.js"></script>
+</body>
+</html>
