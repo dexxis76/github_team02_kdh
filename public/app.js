@@ -48,8 +48,8 @@ function voucherCard(v) {
   return `<div class="ticket" aria-label="공항버스 가족 할인권">
     <div class="ticket-main"><small>공항버스 가족 할인권 <em>데모 값</em></small>
       <b>${esc(v.code)}</b>
-      <span>${esc(v.route)} · ${esc(v.validDate)} 출발일 당일</span></div>
-    <div class="ticket-side"><strong>${v.rate}%</strong><span>1인 ${w(v.fare)} → ${w(v.discounted)}</span><span>${v.party}명 사용 · ${w(v.saving)} 절약</span></div></div>`;
+      <span>${v.trips === 2 ? `왕복 공항버스 · 가는 길 ${esc(v.validDate)} 당일 · 오는 길 ${esc(v.returnUntil)}까지` : `${esc(v.route)} · ${esc(v.validDate)} 출발일 당일`}</span></div>
+    <div class="ticket-side"><strong>${v.rate}%</strong><span>${v.trips === 2 ? '왕복 ' : ''}1인 ${w(v.fare)} → ${w(v.discounted)}</span><span>${v.party}명 사용 · ${w(v.saving)} 절약</span></div></div>`;
 }
 function add(role, text, m) {
   const d = document.createElement('div');

@@ -53,7 +53,7 @@ function summary(s) {
     `· 짐: 캐리어 ${s.bags}개 (대형 ${s.large}개)`,
     `· 함께 가는 인원: ${s.party}명 (본인 포함)`,
     R.busEligible(s.party)
-      ? `· 공항버스 가족 할인권: 데모 규칙상 해당돼요. 1인 ${won(R.BUS_FARE)} → ${won(R.BUS_FARE * (100 - R.BUS_RATE) / 100)} (${R.BUS_RATE}% 할인, 데모 값) × ${s.party}명, 예약이 끝나면 함께 발급해요`
+      ? `· 공항버스 가족 할인권: 데모 규칙상 해당돼요. 왕복 모두 1인 ${won(R.BUS_FARE)} → ${won(R.BUS_FARE * (100 - R.BUS_RATE) / 100)} (${R.BUS_RATE}% 할인 · ${R.BUS_RATE_NOTE}, 데모 값) × ${s.party}명, 예약이 끝나면 함께 발급해요`
       : `· 공항버스 가족 할인권: 3명 이상일 때 발급해요(데모 규칙). 이번 예약은 해당하지 않아요`,
     `· 수거: ${korDate(pickupDate(s))} ${R.hourLabel(R.slotStart(s.pickupHour))}~${R.hourLabel(R.slotStart(s.pickupHour) + 2)} 시간대 — 희망 ${R.hourLabel(s.pickupHour)}, 수거 30분 전 기사님이 연락해요`,
     `· 요금: ${won(p)} (데모 값 · 캐리어 ${s.bags}개 ${won(R.price(s.bags, 0))}${s.large ? ` + 대형 ${s.large}개 ${won(s.large * 5000)}` : ''})`,
@@ -369,7 +369,7 @@ module.exports = async function handler(req, res) {
       });
       reservation = rec; state.step = 'done';
       replyParts.push(`예약이 완료됐어요! 태그 번호는 ${rec.tag}예요. ${korDate(rec.pickupDate)} ${R.hourLabel(R.slotStart(rec.pickupHour))}~${R.hourLabel(R.slotStart(rec.pickupHour) + 2)} 사이에 수거하고, 수거 30분 전에 기사님이 연락드려요. 요금 ${won(rec.price)}은 데모 값이에요.`);
-      if (rec.voucher) replyParts.push(`공항버스 가족 할인권도 발급했어요! 할인권 번호 ${rec.voucher.code} · ${korDate(rec.voucher.validDate)} 출발일 당일, 집에서 인천공항까지 편도 · 1인 ${won(rec.voucher.fare)} → ${won(rec.voucher.discounted)} (${rec.voucher.rate}% 할인) · ${rec.party}명이 쓸 수 있어요. 모두 데모 값이에요.`);
+      if (rec.voucher) replyParts.push(`공항버스 가족 할인권도 발급했어요! 할인권 번호 ${rec.voucher.code} · 왕복 모두 1인 ${won(rec.voucher.fare)} → ${won(rec.voucher.discounted)} (${rec.voucher.rate}% 할인 · ${R.BUS_RATE_NOTE}) · ${rec.party}명이 쓸 수 있어요. 가는 길은 ${korDate(rec.voucher.validDate)} 출발일 당일(집 → 인천공항), 오는 길은 ${korDate(rec.voucher.returnUntil)}까지 귀국할 때 한 번(인천공항 → 집) 쓸 수 있어요. 모두 데모 값이에요.`);
       else replyParts.push('공항버스 가족 할인권은 함께 가는 인원이 3명 이상일 때 발급해요(데모 규칙). 이번 예약은 해당하지 않아요.');
       sources.push(DEMO_DOC);
     } else if (group === 'confirm' && u.intent === 'no' && group0 === 'confirm' && !changed) {

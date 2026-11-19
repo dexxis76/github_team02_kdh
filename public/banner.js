@@ -2,7 +2,7 @@
 // 넘어갈 때 새 사진은 왼쪽에서 들어오고, 지금 사진은 오른쪽으로 밀려 나간다(왼쪽 → 오른쪽).
 // 마우스를 올려도 멈추지 않는다. 사진이 하나도 없으면 배너는 숨겨지고 파란 소개 영역이 그대로 보인다.
 (() => {
-  const INTERVAL = 3000;
+  const INTERVAL = 4000;
   const DURATION = 700; // 넘어가는 데 걸리는 시간(ms)
   const EXT = ['jpg', 'jpeg', 'webp', 'png'];
   const sec = document.getElementById('banner');
