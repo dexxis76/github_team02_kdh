@@ -51,8 +51,9 @@ a { color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .banner { position: relative; overflow: hidden; background: #0b2a55; touch-action: pan-y; }
 .banner[hidden] { display: none; }
-.banner-track { display: flex; transition: transform .6s cubic-bezier(.4, 0, .2, 1); }
-.slide { flex: 0 0 100%; display: block; aspect-ratio: var(--ratio, 8 / 3); max-height: 620px; }
+/* 사진을 겹쳐 두고, 넘어갈 때 새 사진이 왼쪽에서 들어오고 지금 사진은 오른쪽으로 나간다 */
+.banner-track { position: relative; overflow: hidden; aspect-ratio: var(--ratio, 8 / 3); max-height: 620px; }
+.slide { position: absolute; inset: 0; display: block; will-change: transform; }
 .slide img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; user-select: none; }
 .b-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 56px; height: 56px; border-radius: 50%; border: 0; background: #004AC4; color: #fff; display: grid; place-items: center; opacity: .92; }
 .b-arrow:hover { background: var(--cta); opacity: 1; }
