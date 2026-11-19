@@ -1,4 +1,4 @@
-// 홍보 배너: public/banner/ 에 banner-1.jpg, banner-2.jpg … 를 넣으면 3초마다 옆으로 넘어간다.
+// 홍보 배너: public/banner/ 에 banner-1.jpg, banner-2.jpg … 를 넣으면 마우스를 올려도 멈추지 않고 3초마다 옆으로 넘어간다.
 // 사진이 하나도 없으면 배너는 숨겨지고 파란 소개 영역이 그대로 보인다.
 (() => {
   const INTERVAL = 3000;
@@ -28,7 +28,7 @@
     sec.hidden = false;
     document.getElementById('hero').hidden = true;
 
-    let cur = 0, timer = null, hovering = false;
+    let cur = 0, timer = null;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const go = i => {
       cur = (i + slides.length) % slides.length;
@@ -38,15 +38,12 @@
     const stop = () => { clearInterval(timer); timer = null; };
     // 「움직임 줄이기」 설정이 켜져 있으면 미끄러지는 효과만 끄고, 3초마다 바뀌는 것은 그대로 둔다
     if (reduce) track.style.transition = 'none';
-    const start = () => { stop(); if (slides.length > 1 && !hovering && !document.hidden) timer = setInterval(() => go(cur + 1), INTERVAL); };
+    // 항상 3초마다 넘긴다. 화살표·점을 누르면 그 사진에서 3초를 다시 센다. 탭이 숨겨졌을 때만 쉰다.
+    const start = () => { stop(); if (slides.length > 1 && !document.hidden) timer = setInterval(() => go(cur + 1), INTERVAL); };
 
     document.getElementById('bPrev').onclick = () => { go(cur - 1); start(); };
     document.getElementById('bNext').onclick = () => { go(cur + 1); start(); };
     dots.onclick = e => { const b = e.target.closest('button'); if (b) { go(Number(b.dataset.i)); start(); } };
-    sec.addEventListener('mouseenter', () => { hovering = true; stop(); });
-    sec.addEventListener('mouseleave', () => { hovering = false; start(); });
-    sec.addEventListener('focusin', stop);
-    sec.addEventListener('focusout', start);
     document.addEventListener('visibilitychange', start);
 
     // 손가락으로 밀어서 넘기기
