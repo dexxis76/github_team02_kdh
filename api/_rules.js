@@ -58,6 +58,15 @@ const hourLabel = h => `${h < 12 ? '오전' : '오후'} ${h <= 12 ? h : h - 12}�
 // 미주 노선 공항 코드 (항공편 API로 도착지를 알 수 있을 때 자동 확인)
 const US_AIRPORTS = new Set('LAX SFO JFK EWR SEA ATL ORD DFW IAD BOS HNL GUM SPN YVR YYZ YUL YYC DTW IAH LAS ONT SAN PDX MSP DEN PHX ANC PHL MIA CLT SLC KOA OGG SJC LGA DCA'.split(' '));
 
+// 공항버스 가족 할인권 (데모 값): 동반 3명 이상, 1인 기준 요금 18,000원의 50%
+const BUS_MIN_PARTY = 3, BUS_FARE = 18000, BUS_RATE = 50, MAX_PARTY = 10;
+const busEligible = party => Number.isInteger(party) && party >= BUS_MIN_PARTY;
+function voucherFor(party, tag, flightDate) {
+  if (!busEligible(party)) return null;
+  const discounted = Math.round(BUS_FARE * (100 - BUS_RATE) / 100);
+  return { code: `BUS-${tag}`, party, rate: BUS_RATE, fare: BUS_FARE, discounted, saving: (BUS_FARE - discounted) * party, validDate: flightDate, route: '집 → 인천공항 편도(공항버스)', demo: true };
+}
+
 const STATUS = ['접수', '배차 완료', '수거 완료', '공항 인도'];
 
 const PROHIBITED = [
@@ -70,5 +79,5 @@ const PROHIBITED = [
 module.exports = {
   MAX_BAGS_PER_BOOKING, MAX_BAGS_PER_VEHICLE, REGIONS, findDistrict, OUT_OF_SEOUL, price, PRICE_TABLE,
   TERMINAL_HOURS, inServiceHours, checkFlightDate, bookableRange, slotStart, slotLabel, pickupOk, hourLabel,
-  US_AIRPORTS, STATUS, PROHIBITED,
+  US_AIRPORTS, STATUS, PROHIBITED, BUS_MIN_PARTY, BUS_FARE, BUS_RATE, MAX_PARTY, busEligible, voucherFor,
 };

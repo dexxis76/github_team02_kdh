@@ -46,10 +46,12 @@ function render() {
       <td>${esc(i.pickupDate)}<br><small style="color:var(--mute)">${hh(i.pickupHour)} 희망</small></td>
       <td>${esc(i.flightId)}<br><small style="color:var(--mute)">${esc(i.flightDate)} ${esc(i.depTime)} · ${esc(i.terminal)}</small></td>
       <td>${i.bags}개${i.large ? ` <small style="color:var(--mute)">(대형 ${i.large})</small>` : ''}</td>
+      <td>${i.party ? i.party + '명' : '-'}</td>
       <td>${Number(i.price).toLocaleString('ko-KR')}원</td>
+      <td>${i.voucher ? `<span class="tagc" style="color:var(--arr)">${esc(i.voucher.code)}</span><br><small style="color:var(--mute)">${i.voucher.rate}% · ${i.voucher.party}명 · 데모 값</small>` : '<small style="color:var(--mute)">해당 없음</small>'}</td>
       <td><span class="st ${stClass(i.status)}">${esc(i.status)}</span></td>
       <td>${next ? `<button class="mini" data-t="${esc(i.tag)}" data-s="${esc(next)}">${esc(next)}으로</button>` : '<button class="mini" disabled>완료</button>'}</td></tr>`;
-  }).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--sub);padding:32px">해당하는 예약이 없어요.</td></tr>';
+  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--sub);padding:32px">해당하는 예약이 없어요.</td></tr>';
 }
 
 document.addEventListener('click', e => {

@@ -12,7 +12,7 @@ function stepIndex() {
   if (!s.name || !s.phone || !s.district) return 1;
   if (!s.flightId || !s.flightDate || (s.flightSource === '시연 값' && (!s.terminal || !s.depTime))) return 2;
   if (s.checkUs == null || s.checkMobile !== true || s.checkUm == null) return 3;
-  if (!s.bags || s.large == null) return 4;
+  if (!s.bags || s.large == null || s.party == null) return 4;
   if (s.pickupHour == null) return 5;
   return 6;
 }
@@ -39,7 +39,17 @@ function resCard(r) {
     <dt>예약자</dt><dd>${esc(r.name)} · ${esc(r.phone)}</dd>
     <dt>수거</dt><dd>${esc(r.pickupDate)} ${String(r.pickupHour).padStart(2, '0')}시 희망 · ${esc(r.district)}</dd>
     <dt>항공편</dt><dd>${esc(r.flightId)} · ${esc(r.flightDate)} ${esc(r.depTime)} · ${esc(r.terminal)}</dd>
-    <dt>짐 / 요금</dt><dd>캐리어 ${r.bags}개(대형 ${r.large}개) · ${Number(r.price).toLocaleString('ko-KR')}원 (데모 값)</dd></dl></div>`;
+    <dt>짐 / 요금</dt><dd>캐리어 ${r.bags}개(대형 ${r.large}개) · ${Number(r.price).toLocaleString('ko-KR')}원 (데모 값)</dd>
+    <dt>동반 인원</dt><dd>${r.party}명</dd></dl></div>${voucherCard(r.voucher)}`;
+}
+function voucherCard(v) {
+  if (!v) return '';
+  const w = n => Number(n).toLocaleString('ko-KR') + '원';
+  return `<div class="ticket" aria-label="공항버스 가족 할인권">
+    <div class="ticket-main"><small>공항버스 가족 할인권 <em>데모 값</em></small>
+      <b>${esc(v.code)}</b>
+      <span>${esc(v.route)} · ${esc(v.validDate)} 출발일 당일</span></div>
+    <div class="ticket-side"><strong>${v.rate}%</strong><span>1인 ${w(v.fare)} → ${w(v.discounted)}</span><span>${v.party}명 사용 · ${w(v.saving)} 절약</span></div></div>`;
 }
 function add(role, text, m) {
   const d = document.createElement('div');

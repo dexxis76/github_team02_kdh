@@ -21,13 +21,15 @@ function seed() {
     ['한가상', '010-0000-0006', '서울 영등포구 여의대로 6', '영등포구', '서남', 'OZ331', 'T1', '19:00', '싱가포르', 5, 1, d2, 16],
   ];
   const seq = {};
+  const parties = [4, 2, 5, 3, 1, 4]; // 시연용 동반 인원
   return base.map((b, i) => ({
     tag: `HD-${b[11].replace(/-/g, '')}-${String((seq[b[11]] = (seq[b[11]] || 0) + 1)).padStart(3, '0')}`,
+    party: parties[i],
     name: b[0], phone: b[1], address: b[2], district: b[3], region: b[4],
     flightId: b[5], flightDate: addDays(b[11], 1), terminal: b[6], depTime: b[7], airport: b[8],
     bags: b[9], large: b[10], price: R.price(b[9], b[10]),
     pickupDate: b[11], pickupHour: b[12], status: '접수', demo: true, createdAt: new Date(Date.now() - (6 - i) * 60e3).toISOString(),
-  }));
+  })).map(r => ({ ...r, voucher: R.voucherFor(r.party, r.tag, r.flightDate) }));
 }
 
 function save() {
@@ -45,7 +47,8 @@ function create(r) {
   const all = load();
   const prefix = `HD-${r.pickupDate.replace(/-/g, '')}-`;
   const n = Math.max(0, ...all.filter(x => x.tag.startsWith(prefix)).map(x => Number(x.tag.slice(prefix.length)) || 0)) + 1;
-  const rec = { ...r, tag: `${prefix}${String(n).padStart(3, '0')}`, status: '접수', demo: false, createdAt: new Date().toISOString() };
+  const tag = `${prefix}${String(n).padStart(3, '0')}`;
+  const rec = { ...r, tag, voucher: R.voucherFor(r.party, tag, r.flightDate), status: '접수', demo: false, createdAt: new Date().toISOString() };
   all.push(rec); save();
   return rec;
 }

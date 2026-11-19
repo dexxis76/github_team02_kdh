@@ -21,7 +21,7 @@ function cleanState(s) {
   const pick = ['name', 'phone', 'address', 'district', 'region', 'flightId', 'flightDate', 'terminal', 'depTime', 'airport', 'flightSource', 'flightNote', 'flightKey'];
   for (const f of pick) if (typeof k[f] === 'string') out.slots[f] = k[f].slice(0, 120);
   for (const f of ['checkUs', 'checkMobile', 'checkUm']) if (typeof k[f] === 'boolean') out.slots[f] = k[f];
-  for (const f of ['bags', 'large', 'pickupHour']) if (Number.isInteger(k[f])) out.slots[f] = k[f];
+  for (const f of ['bags', 'large', 'party', 'pickupHour']) if (Number.isInteger(k[f])) out.slots[f] = k[f];
   if (typeof s.flightKey === 'string') out.flightKey = s.flightKey;
   return out;
 }
@@ -37,6 +37,7 @@ function pendingGroup(s) {
   if (s.checkUm == null) return 'checkUm';
   if (!s.bags) return 'bags';
   if (s.large == null) return 'large';
+  if (s.party == null) return 'party';
   if (s.pickupHour == null) return 'pickup';
   return 'confirm';
 }
@@ -50,6 +51,10 @@ function summary(s) {
     `· 수거지: ${s.address} (${s.district}, ${s.region}권역)`,
     `· 항공편: ${s.flightId} · ${korDate(s.flightDate)} ${s.depTime} 출발 · ${s.terminal}${s.airport ? ' · ' + s.airport : ''}`,
     `· 짐: 캐리어 ${s.bags}개 (대형 ${s.large}개)`,
+    `· 함께 가는 인원: ${s.party}명 (본인 포함)`,
+    R.busEligible(s.party)
+      ? `· 공항버스 가족 할인권: 데모 규칙상 해당돼요. 1인 ${won(R.BUS_FARE)} → ${won(R.BUS_FARE * (100 - R.BUS_RATE) / 100)} (${R.BUS_RATE}% 할인, 데모 값) × ${s.party}명, 예약이 끝나면 함께 발급해요`
+      : `· 공항버스 가족 할인권: 3명 이상일 때 발급해요(데모 규칙). 이번 예약은 해당하지 않아요`,
     `· 수거: ${korDate(pickupDate(s))} ${R.hourLabel(R.slotStart(s.pickupHour))}~${R.hourLabel(R.slotStart(s.pickupHour) + 2)} 시간대 — 희망 ${R.hourLabel(s.pickupHour)}, 수거 30분 전 기사님이 연락해요`,
     `· 요금: ${won(p)} (데모 값 · 캐리어 ${s.bags}개 ${won(R.price(s.bags, 0))}${s.large ? ` + 대형 ${s.large}개 ${won(s.large * 5000)}` : ''})`,
   ].join('\n');
@@ -76,6 +81,8 @@ function promptFor(g, s) {
       return { text: '캐리어는 모두 몇 개인가요? (한 예약 최대 8개, 데모 값)', quick: ['캐리어 1개', '캐리어 2개', '캐리어 3개', '캐리어 4개'] };
     case 'large':
       return { text: '그중 28인치 이상 대형 캐리어는 몇 개인가요?', quick: ['대형 없어요', '대형 1개', '대형 2개'] };
+    case 'party':
+      return { text: '함께 공항에 가시는 인원은 본인 포함 몇 명인가요? 3명 이상이면 공항버스 가족 할인권을 예약과 함께 드려요(데모 규칙).', quick: ['1명', '2명', '3명', '4명'] };
     case 'pickup':
       return { text: `수거는 출발 전날(${korDate(pickupDate(s))})에 해요. 희망 시각을 알려 주세요. 오전 8시~오후 8시, 2시간 단위 시간대로 배차해요(데모 값).`, quick: ['오전 10시', '오후 2시', '오후 4시', '오후 6시'] };
     case 'confirm':
@@ -94,7 +101,7 @@ function buildSystem(s, group) {
     '너는 「홈드랍 예약·안내 챗봇」의 말 이해 담당이다. 반드시 JSON 객체 하나만 출력한다. 설명·코드블록 금지.',
     `형식: ${SCHEMA_HELP}`,
     'intent: 예약하고 싶다는 말=book, 질문=ask, 확인 질문에 긍정=yes, 부정=no, 그 밖=other.',
-    'updates 에는 사용자가 이번 말에서 알려 준 값만 넣는다(없으면 생략): name(성함), phone(숫자와 -), address(주소), flightId(편명 예 KE123), flightDate(YYYY-MM-DD), terminal(T1 또는 T2), depTime(HH:MM 24시간), checkUs(미주 노선이면 true), checkMobile(모바일 체크인 완료면 true), checkUm(어린이 혼자 탑승이면 true), bags(캐리어 총 개수 정수), large(대형 개수 정수), pickupHour(희망 수거 시각 0~23 정수).',
+    'updates 에는 사용자가 이번 말에서 알려 준 값만 넣는다(없으면 생략): name(성함), phone(숫자와 -), address(주소), flightId(편명 예 KE123), flightDate(YYYY-MM-DD), terminal(T1 또는 T2), depTime(HH:MM 24시간), checkUs(미주 노선이면 true), checkMobile(모바일 체크인 완료면 true), checkUm(어린이 혼자 탑승이면 true), bags(캐리어 총 개수 정수), large(대형 개수 정수), party(함께 가는 인원 본인 포함 정수), pickupHour(희망 수거 시각 0~23 정수).',
     `오늘은 ${today()}이다. 연도 없는 날짜는 오늘 이후 가장 가까운 날로 본다. 물어보지 않은 값을 지어내지 않는다.`,
     `지금 서비스가 묻고 있는 항목은 「${group}」이다. 사용자가 「네」「2개」「강남구」처럼 짧게 답하면 이 항목의 값으로 해석한다. (checkUs/checkMobile/checkUm 은 질문 내용이 「미주 노선인가/체크인 마쳤나/어린이 혼자인가」이다.)`,
     'answer: 사용자가 질문했을 때만 한국어 존댓말로 2~4문장. 아래 [참고 자료]와 [실시간 값] 안의 내용만 쓴다. 없으면 「확인 필요」라고 하고 문의처를 안내한다: ' + CONTACT + '.',
@@ -160,6 +167,9 @@ function ruleUnderstand(text, s, group) {
     const h = t.match(/(오전|오후|아침|저녁)?\s?(\d{1,2})\s?시/);
     if (h && group === 'pickup') { let n = Number(h[2]); if (/오후|저녁/.test(h[1] || '') && n < 12) n += 12; else if (!h[1] && n >= 1 && n <= 7) n += 12; u.pickupHour = n; }
   }
+  const pm = t.match(/(\d+)\s?(명|인)/);
+  if (pm && (group === 'party' || /가족|함께|동반|같이/.test(t))) u.party = Number(pm[1]);
+  else if (group === 'party') { const n = t.match(/^\s*(\d+)\s*$/); if (n) u.party = Number(n[1]); }
   if (group === 'checkUs') u.checkUs = yes && !/아니|않|없/.test(t) ? true : (no || /아니|않|없/.test(t) ? false : undefined);
   if (group === 'checkMobile') u.checkMobile = /아니|아직|못|안\s?했/.test(t) ? false : (yes || /마쳤|완료/.test(t) ? true : undefined);
   if (group === 'checkUm') u.checkUm = /아니|않|없/.test(t) ? false : (yes ? true : undefined);
@@ -215,6 +225,10 @@ function applyUpdates(s, u, errors) {
   if (u.large != null) {
     const n = Number(u.large);
     if (Number.isInteger(n) && n >= 0 && (!s.bags || n <= s.bags)) s.large = n; else errors.push('대형 개수는 캐리어 개수보다 많을 수 없어요.');
+  }
+  if (u.party != null) {
+    const n = Number(u.party);
+    if (Number.isInteger(n) && n >= 1 && n <= R.MAX_PARTY) s.party = n; else errors.push(`함께 가는 인원은 1~${R.MAX_PARTY}명으로 알려 주세요(데모 값).`);
   }
   if (u.pickupHour != null) {
     const n = Number(u.pickupHour);
@@ -351,17 +365,19 @@ module.exports = async function handler(req, res) {
       const rec = store.create({
         name: s.name, phone: s.phone, address: s.address, district: s.district, region: s.region,
         flightId: s.flightId, flightDate: s.flightDate, terminal: s.terminal, depTime: s.depTime, airport: s.airport || '',
-        bags: s.bags, large: s.large, price: R.price(s.bags, s.large), pickupDate: pickupDate(s), pickupHour: s.pickupHour,
+        bags: s.bags, large: s.large, party: s.party, price: R.price(s.bags, s.large), pickupDate: pickupDate(s), pickupHour: s.pickupHour,
       });
       reservation = rec; state.step = 'done';
       replyParts.push(`예약이 완료됐어요! 태그 번호는 ${rec.tag}예요. ${korDate(rec.pickupDate)} ${R.hourLabel(R.slotStart(rec.pickupHour))}~${R.hourLabel(R.slotStart(rec.pickupHour) + 2)} 사이에 수거하고, 수거 30분 전에 기사님이 연락드려요. 요금 ${won(rec.price)}은 데모 값이에요.`);
+      if (rec.voucher) replyParts.push(`공항버스 가족 할인권도 발급했어요! 할인권 번호 ${rec.voucher.code} · ${korDate(rec.voucher.validDate)} 출발일 당일, 집에서 인천공항까지 편도 · 1인 ${won(rec.voucher.fare)} → ${won(rec.voucher.discounted)} (${rec.voucher.rate}% 할인) · ${rec.party}명이 쓸 수 있어요. 모두 데모 값이에요.`);
+      else replyParts.push('공항버스 가족 할인권은 함께 가는 인원이 3명 이상일 때 발급해요(데모 규칙). 이번 예약은 해당하지 않아요.');
       sources.push(DEMO_DOC);
     } else if (group === 'confirm' && u.intent === 'no' && group0 === 'confirm' && !changed) {
       replyParts.push('바꿀 내용을 말씀해 주세요. (예: 캐리어 3개로 바꿔 주세요 / 수거는 오후 4시로)');
       replyParts.push('');
     } else {
       const p = promptFor(group, s);
-      if (group === 'bags' || group === 'large' || group === 'confirm') sources.push(DEMO_DOC);
+      if (group === 'bags' || group === 'large' || group === 'party' || group === 'confirm') sources.push(DEMO_DOC);
       replyParts.push(p.text); meta.quick = p.quick;
     }
   } else if (!u.answer) {
