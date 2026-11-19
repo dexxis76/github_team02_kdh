@@ -6,7 +6,8 @@
   const sec = document.getElementById('banner');
   if (!sec) return;
 
-  const probe = src => new Promise(ok => { const i = new Image(); i.onload = () => ok(src); i.onerror = () => ok(null); i.src = src; });
+  let ratio = null; // 첫 사진의 가로:세로 비율에 배너 높이를 맞춘다 (글자가 잘리지 않게)
+  const probe = src => new Promise(ok => { const i = new Image(); i.onload = () => { if (!ratio) ratio = i.naturalWidth / i.naturalHeight; ok(src); }; i.onerror = () => ok(null); i.src = src; });
   async function findSlides() {
     const found = [];
     for (let n = 1; n <= 8; n++) {
@@ -23,6 +24,7 @@
     const track = document.getElementById('bTrack'), dots = document.getElementById('bDots');
     track.innerHTML = slides.map((s, i) => `<a class="slide" href="#chat" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${slides.length}"><img src="${s}" alt="홈드랍 홍보 ${i + 1}" ${i ? 'loading="lazy"' : ''} draggable="false"></a>`).join('');
     dots.innerHTML = slides.map((_, i) => `<button type="button" role="tab" aria-label="${i + 1}번 배너" data-i="${i}"></button>`).join('');
+    if (ratio) sec.style.setProperty('--ratio', ratio.toFixed(4));
     sec.hidden = false;
     document.getElementById('hero').hidden = true;
 
