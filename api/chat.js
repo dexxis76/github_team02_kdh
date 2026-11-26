@@ -66,7 +66,7 @@ function promptFor(g, s) {
     case 'who':
       return { text: s.name ? `${s.name}님, 휴대폰 번호를 알려 주세요. (실제 번호 말고 지어낸 예시로 입력해 주세요)` : '좋아요! 먼저 성함과 휴대폰 번호를 알려 주세요. 데모라서 실제 개인정보 대신 지어낸 예시를 써 주세요.', quick: ['김가상 010-0000-0000'] };
     case 'address':
-      return { text: '수거받을 주소를 알려 주세요. 구 이름을 꼭 넣어 주세요. (서울 전체가 데모 범위예요)', quick: ['서울 강남구 테헤란로 1'] };
+      return { text: '수거받을 주소를 알려 주세요. 서울은 구 이름, 경기도는 시·군 이름을 꼭 넣어 주세요. (서울 전체와 경기도 31개 시·군이 데모 범위예요)', quick: ['서울 강남구 테헤란로 1', '경기 성남시 분당구 판교역로 1'] };
     case 'flight':
       return { text: s.flightId ? `출발 날짜를 알려 주세요. 예약은 출발 2일 전까지라 ${korDate(from)}~${korDate(to)} 출발편만 예약할 수 있어요.` : `항공편 번호와 출발 날짜를 알려 주세요. (예: KE123, ${korDate(from)}) 예약은 출발 2일 전까지라 ${korDate(from)}~${korDate(to)} 출발편만 예약할 수 있어요.`, quick: [] };
     case 'terminal':
@@ -207,8 +207,8 @@ function applyUpdates(s, u, errors) {
     const a = u.address.trim().slice(0, 100);
     const f = R.findDistrict(a);
     if (f) { s.address = a; s.district = f.district; s.region = f.region; }
-    else if (R.OUT_OF_SEOUL.test(a) && !/서울/.test(a)) errors.push('수거 지역은 서울 전체까지가 데모 범위예요. 서울 주소로 알려 주세요.');
-    else errors.push('구 이름이 들어간 서울 주소로 알려 주세요. (예: 서울 강남구 …)');
+    else if (R.OUT_OF_AREA.test(a)) errors.push('수거 지역은 서울과 경기도까지가 데모 범위예요. 서울 또는 경기도 주소로 알려 주세요.');
+    else errors.push('서울은 구 이름, 경기도는 시·군 이름이 들어간 주소로 알려 주세요. (예: 서울 강남구 … / 경기 성남시 …)');
   }
   if (typeof u.flightId === 'string') {
     const v = u.flightId.replace(/\s/g, '').toUpperCase();

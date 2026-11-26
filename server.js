@@ -28,6 +28,7 @@ http.createServer(async (req, res) => {
   if (p === '/') p = '/index.html';
   if (p === '/admin') p = '/admin.html';
   if (p === '/terms') p = '/terms.html';
+  if (p === '/privacy') p = '/privacy.html';
   const f = path.join(PUB, p);
   if (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
   res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
