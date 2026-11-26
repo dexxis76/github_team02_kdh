@@ -1,0 +1,378 @@
+// 다크모드 + 한/영 전환 (모든 화면 공통)
+// - data-i18n="키"            : 요소의 글자를 바꾼다
+// - data-i18n-attr="속성:키;…" : placeholder · aria-label · title 등 속성을 바꾼다
+// - 동적으로 만드는 글자는 window.t(키, 값) 을 쓰고, 'langchange' 이벤트에서 다시 그린다
+(() => {
+  const root = document.documentElement;
+  const store = {
+    get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 저장소를 못 쓰면 이번 방문에만 적용 */ } },
+  };
+
+  const D = {
+    ko: {
+      'title.index': '홈드랍 예약 챗봇',
+      'title.admin': '홈드랍 관리자 화면',
+      'title.terms': '홈드랍 이용약관',
+      'meta.terms': '홈드랍 데모 서비스 이용약관',
+      'footer.terms': '이용약관',
+      'terms.back': '← 예약 챗봇으로 돌아가기',
+      'meta.index': '집에서 캐리어를 수거해 인천국제공항까지 보내 주는 홈드랍을 대화로 예약하는 데모 서비스',
+      'meta.admin': '홈드랍 예약 표와 배차 추천 보드(데모)',
+      'logo': '홈드랍',
+      'nav.main': '주요 메뉴',
+      'nav.chat': '예약 챗봇',
+      'nav.traffic': '혼잡 시간대',
+      'nav.admin': '관리자 화면',
+      'demo': '데모 서비스',
+      'theme.toLight': '라이트 모드로 바꾸기',
+      'theme.toDark': '다크 모드로 바꾸기',
+      'lang.label': '언어 선택',
+      'banner.label': '홈드랍 홍보 배너',
+      'banner.prev': '이전 배너',
+      'banner.next': '다음 배너',
+      'banner.pick': '배너 선택',
+      'banner.alt': '홈드랍 홍보 {n}',
+      'banner.nth': '{n}번 배너',
+      'hero.eyebrow': '집에서 공항까지, 짐은 먼저 보내세요',
+      'hero.sub': '말로 예약하고, 빈손으로 출국',
+      'hero.lead': '「짐 맡기고 싶어요」 한마디면 챗봇이 필요한 것을 하나씩 물어봐요. 수거는 출발 전날, 기사님이 집으로 찾아갑니다.',
+      'hero.cta': '예약 시작하기',
+      'hero.cta2': '혼잡 시간대 보기',
+      'flow.label': '서비스 흐름',
+      'flow.1b': '챗봇으로 예약', 'flow.1s': '대화로 정보 입력·확인', 'flow.1e': '이 데모',
+      'flow.2b': '집에서 수거', 'flow.2s': '기사 방문, 태그 부착', 'flow.2e': '관리자',
+      'flow.3b': '공항으로 이동', 'flow.3s': '권역별로 묶어 배차', 'flow.3e': '관리자',
+      'flow.4b': '공항 인도', 'flow.4s': '고객은 빈손으로 출국',
+      'chat.en': 'Booking Chat',
+      'chat.ko': '대화로 예약하기',
+      'chat.desc': '요금·금지 물품·수거 시간도 물어볼 수 있어요. 답마다 근거 이름이 붙고, 시연용 값에는 「데모 값」이라고 표시해요.',
+      'chat.region': '예약 챗봇',
+      'chat.title': '홈드랍 예약 챗봇',
+      'chat.modeInit': '연결 전',
+      'chat.placeholder': '메시지를 입력하세요',
+      'chat.input': '메시지 입력',
+      'chat.send': '보내기',
+      'chat.stepsTitle': '예약 진행 단계',
+      'chat.faqTitle': '자주 묻는 것',
+      'faq.fare': '요금', 'faq.fareS': 'Fare', 'faq.fareQ': '요금이 얼마예요?',
+      'faq.pickup': '수거 시간', 'faq.pickupS': 'Pickup', 'faq.pickupQ': '언제 수거하러 오나요?',
+      'faq.ban': '금지 물품', 'faq.banS': 'Restricted', 'faq.banQ': '캐리어에 넣으면 안 되는 물건이 뭐예요?',
+      'faq.area': '이용 지역', 'faq.areaS': 'Area', 'faq.areaQ': '홈드랍은 어느 지역에서 쓸 수 있나요?',
+      'traffic.en': 'Traffic Guide',
+      'traffic.ko': '출국장 혼잡 시간대',
+      'traffic.desc': '시간대별 예상 출국장 승객 수예요. 짙은 초록이 가장 붐비는 세 시간대예요.',
+      'traffic.t1': '제1여객터미널',
+      'traffic.t2': '제2여객터미널',
+      'traffic.today': '오늘',
+      'traffic.tomorrow': '내일',
+      'traffic.chart': '시간대별 예상 출국장 승객 수 막대 그래프',
+      'traffic.loading': '불러오는 중…',
+      'traffic.live': '출처: 인천국제공항공사 승객예고 API · <b class="ok">실시간</b> 예상치({date}). 실측이 아니에요.',
+      'traffic.demo': '승객예고 API를 쓸 수 없어요(<b class="bad">{reason}</b>). 아래는 <b>시연 값</b>이에요.',
+      'traffic.fail': '혼잡 정보를 불러오지 못했어요.',
+      'traffic.bar': '{h}~{h2}시 {n}명',
+      'footer.title': '홈드랍 예약·안내 챗봇 · 데모 버전',
+      'footer.l1': '요금·수거 시각·배차 규칙은 시연용으로 만든 값이에요. 실제 서비스 기준이 아니며, 실제 개인정보는 입력하지 마세요.',
+      'footer.l2': '항공편·혼잡 정보 출처: 인천국제공항공사 공공데이터(여객편 주간 운항 현황, 승객예고).',
+      // 챗봇 동적 글자
+      'step.0': '말 걸기', 'step.1': '고객 정보', 'step.2': '항공편', 'step.3': '사전 확인', 'step.4': '짐', 'step.5': '수거 시각', 'step.6': '예약 확인',
+      'greet': '안녕하세요! 홈드랍 예약·안내 챗봇이에요. 집에서 캐리어를 수거해 공항까지 보내 드려요(데모). 「짐 맡기고 싶어요」라고 말하면 예약을 시작해요. 요금·금지 물품·수거 시간도 물어보세요.',
+      'typing': '답을 쓰고 있어요…',
+      'err.noReply': '답을 받지 못했어요. {msg}\n잠시 뒤 다시 보내 주세요.',
+      'err.server': '서버 오류',
+      'retry': '다시 시도',
+      'chip.src': '근거: {n}',
+      'chip.rule': '규칙 기반 모드 · AI 연결 안 됨',
+      'chip.flightLive': '항공편: 실시간',
+      'chip.flightDemo': '항공편: 시연 값 ({r})',
+      'chip.cong': '혼잡: {v}',
+      'mode.ai': 'AI · {p}',
+      'mode.rule': '규칙 기반 모드',
+      'res.name': '예약자', 'res.pickup': '수거', 'res.flight': '항공편', 'res.bags': '짐 / 요금', 'res.party': '동반 인원',
+      'res.pickupV': '{date} {h}시 희망 · {d}',
+      'res.bagsV': '캐리어 {b}개(대형 {l}개) · {p} (데모 값)',
+      'res.partyV': '{n}명',
+      'won': '{n}원',
+      'voucher.label': '공항버스 가족 할인권',
+      'voucher.demo': '데모 값',
+      'voucher.round': '왕복 공항버스 · 가는 길 {d} 당일 · 오는 길 {r}까지',
+      'voucher.one': '{route} · {d} 출발일 당일',
+      'voucher.fare': '{round}1인 {a} → {b}',
+      'voucher.round1': '왕복 ',
+      'voucher.use': '{n}명 사용 · {s} 절약',
+      // 관리자
+      'adm.en': 'Dispatch Board',
+      'adm.ko': '예약 표와 배차 보드',
+      'adm.vehTitle': '배차 추천',
+      'adm.vehDesc': '같은 수거일 × 2시간 시간대 × 같은 생활권역을 한 차량에 묶어요. 한 차량 최대 캐리어 40개 (데모 규칙)',
+      'adm.tblTitle': '예약 표',
+      'adm.connTitle': '연결 상태',
+      'adm.connDesc': '키 값은 보여 주지 않고, 이름별로 「값 있음 / 비어 있음」과 마지막 호출 결과만 보여 줘요.',
+      'adm.footer': '<b>데모 데이터</b> 표시가 붙은 예약은 시연용으로 만든 가상 예약이에요. 로그인 없이 열리는 데모 화면이라 실제 운영에는 로그인이 필요해요.',
+      'th.tag': '태그 번호', 'th.name': '예약자', 'th.addr': '수거지', 'th.pickup': '수거 시각', 'th.flight': '항공편', 'th.bags': '짐', 'th.party': '동반', 'th.price': '요금', 'th.voucher': '버스 할인권', 'th.status': '상태',
+      'adm.loading': '불러오는 중…',
+      'adm.loadFail': '예약을 불러오지 못했어요.',
+      'adm.storage': '저장 위치: {s}',
+      'tile.all': '전체 예약', 'tile.pending': '접수 대기', 'tile.bags': '캐리어 합계', 'tile.veh': '배차 차량',
+      'unit.cases': '{n}건', 'unit.bags': '{n}개', 'unit.cars': '{n}대', 'unit.people': '{n}명',
+      'st.접수': '접수', 'st.배차 완료': '배차 완료', 'st.수거 완료': '수거 완료', 'st.공항 인도': '공항 인도',
+      'st.전체': '전체',
+      'st.next': '{s}으로',
+      'st.done': '완료',
+      'adm.region': '{r}권역',
+      'veh.bagsLabel': '캐리어 {b}개 / {m}개',
+      'veh.count': '<b>{b}</b> / {m}개 · 예약 {n}건',
+      'veh.setDispatched': '배차 완료로 바꾸기',
+      'veh.empty': '아직 묶을 예약이 없어요. 고객 화면에서 예약하면 여기에 나타나요.',
+      'row.demoData': '데모 데이터',
+      'row.wish': '{h} 희망',
+      'row.large': '(대형 {n})',
+      'row.na': '해당 없음',
+      'row.voucher': '{round}{r}% · {p}명 · 데모 값',
+      'row.empty': '해당하는 예약이 없어요.',
+      'conn.keys': '키 이름',
+      'conn.ai': 'AI 순서',
+      'conn.last': '마지막 응답: {v}',
+      'conn.allFail': '모두 실패 → 규칙 기반',
+      'conn.none': '아직 호출 없음',
+      'conn.ok': '성공(실시간)',
+      'conn.fallback': '→ 시연 값',
+      'conn.flightApi': '여객편 주간 운항 현황 API',
+      'conn.noticeApi': '승객예고 API',
+      'conn.docs': '답변 참고 문서',
+      'conn.docsV': '{n}조각 (docs/답변참고문서/청킹)',
+      'conn.fail': '연결 상태를 불러오지 못했어요.',
+      'v.값 있음': '값 있음', 'v.비어 있음': '비어 있음',
+    },
+    en: {
+      'title.index': 'Home Drop Booking Chatbot',
+      'title.admin': 'Home Drop Admin',
+      'title.terms': 'Home Drop Terms of Use',
+      'meta.terms': 'Terms of Use for the Home Drop demo service',
+      'footer.terms': 'Terms of Use',
+      'terms.back': '← Back to booking chat',
+      'meta.index': 'A demo service that lets you book Home Drop — luggage pickup from your home to Incheon International Airport — through chat',
+      'meta.admin': 'Home Drop reservation table and dispatch recommendation board (demo)',
+      'logo': 'Home Drop',
+      'nav.main': 'Main menu',
+      'nav.chat': 'Booking Chat',
+      'nav.traffic': 'Busy Hours',
+      'nav.admin': 'Admin',
+      'demo': 'Demo',
+      'theme.toLight': 'Switch to light mode',
+      'theme.toDark': 'Switch to dark mode',
+      'lang.label': 'Language',
+      'banner.label': 'Home Drop promotional banner',
+      'banner.prev': 'Previous banner',
+      'banner.next': 'Next banner',
+      'banner.pick': 'Choose banner',
+      'banner.alt': 'Home Drop promotion {n}',
+      'banner.nth': 'Banner {n}',
+      'hero.eyebrow': 'Send your luggage ahead — from home to the airport',
+      'hero.sub': 'Book by chat. Travel empty-handed.',
+      'hero.lead': 'Just say "I want to drop off my luggage" and the chatbot asks for what it needs, one step at a time. A driver picks up at your home the day before departure.',
+      'hero.cta': 'Start booking',
+      'hero.cta2': 'See busy hours',
+      'flow.label': 'Service flow',
+      'flow.1b': 'Book by chat', 'flow.1s': 'Enter and confirm details in chat', 'flow.1e': 'This demo',
+      'flow.2b': 'Home pickup', 'flow.2s': 'Driver visits, tag attached', 'flow.2e': 'Admin',
+      'flow.3b': 'To the airport', 'flow.3s': 'Dispatched by area', 'flow.3e': 'Admin',
+      'flow.4b': 'Airport handover', 'flow.4s': 'You travel empty-handed',
+      'chat.en': 'Booking Chat',
+      'chat.ko': 'Book by chat',
+      'chat.desc': 'You can also ask about fares, restricted items and pickup times. Every answer shows its source, and demo-only values are marked "demo value".',
+      'chat.region': 'Booking chatbot',
+      'chat.title': 'Home Drop Booking Chatbot',
+      'chat.modeInit': 'Not connected',
+      'chat.placeholder': 'Type a message',
+      'chat.input': 'Message input',
+      'chat.send': 'Send',
+      'chat.stepsTitle': 'Booking steps',
+      'chat.faqTitle': 'Common questions',
+      'faq.fare': 'Fare', 'faq.fareS': '요금', 'faq.fareQ': '요금이 얼마예요?',
+      'faq.pickup': 'Pickup time', 'faq.pickupS': '수거 시간', 'faq.pickupQ': '언제 수거하러 오나요?',
+      'faq.ban': 'Restricted items', 'faq.banS': '금지 물품', 'faq.banQ': '캐리어에 넣으면 안 되는 물건이 뭐예요?',
+      'faq.area': 'Service area', 'faq.areaS': '이용 지역', 'faq.areaQ': '홈드랍은 어느 지역에서 쓸 수 있나요?',
+      'traffic.en': 'Traffic Guide',
+      'traffic.ko': 'Departure hall busy hours',
+      'traffic.desc': 'Estimated departure-hall passengers by hour. The dark green bars are the three busiest hours.',
+      'traffic.t1': 'Terminal 1',
+      'traffic.t2': 'Terminal 2',
+      'traffic.today': 'Today',
+      'traffic.tomorrow': 'Tomorrow',
+      'traffic.chart': 'Bar chart of estimated departure-hall passengers by hour',
+      'traffic.loading': 'Loading…',
+      'traffic.live': 'Source: Incheon Airport passenger forecast API · <b class="ok">Live</b> estimate ({date}). Not a measured count.',
+      'traffic.demo': 'The passenger forecast API is unavailable (<b class="bad">{reason}</b>). The chart below shows <b>demo values</b>.',
+      'traffic.fail': 'Could not load busy-hour data.',
+      'traffic.bar': '{h}:00–{h2}:00 · {n} pax',
+      'footer.title': 'Home Drop Booking & Info Chatbot · Demo version',
+      'footer.l1': 'Fares, pickup times and dispatch rules are made up for the demo, not real service terms. Please do not enter real personal information.',
+      'footer.l2': 'Flight and congestion data: Incheon International Airport Corporation open data (weekly passenger flights, passenger forecast).',
+      'step.0': 'Say hello', 'step.1': 'Your details', 'step.2': 'Flight', 'step.3': 'Pre-checks', 'step.4': 'Luggage', 'step.5': 'Pickup time', 'step.6': 'Confirm',
+      'greet': 'Hello! I\'m the Home Drop booking and info chatbot. We pick up your luggage at home and send it to the airport (demo). Say "I want to drop off my luggage" to start a booking. You can also ask about fares, restricted items and pickup times.\n(Note: the booking flow itself still replies in Korean — please type your answers in Korean.)',
+      'typing': 'Typing…',
+      'err.noReply': 'No reply received. {msg}\nPlease try again in a moment.',
+      'err.server': 'Server error',
+      'retry': 'Try again',
+      'chip.src': 'Source: {n}',
+      'chip.rule': 'Rule-based mode · AI not connected',
+      'chip.flightLive': 'Flight: live',
+      'chip.flightDemo': 'Flight: demo value ({r})',
+      'chip.cong': 'Congestion: {v}',
+      'mode.ai': 'AI · {p}',
+      'mode.rule': 'Rule-based mode',
+      'res.name': 'Name', 'res.pickup': 'Pickup', 'res.flight': 'Flight', 'res.bags': 'Bags / Fare', 'res.party': 'Travelers',
+      'res.pickupV': '{date} around {h}:00 · {d}',
+      'res.bagsV': '{b} bags ({l} large) · {p} (demo value)',
+      'res.partyV': '{n}',
+      'won': '₩{n}',
+      'voucher.label': 'Airport bus family discount',
+      'voucher.demo': 'demo value',
+      'voucher.round': 'Round-trip airport bus · outbound on {d} · return by {r}',
+      'voucher.one': '{route} · valid on departure day {d}',
+      'voucher.fare': '{round}per person {a} → {b}',
+      'voucher.round1': 'round-trip ',
+      'voucher.use': '{n} people · saves {s}',
+      'adm.en': 'Dispatch Board',
+      'adm.ko': 'Reservations & dispatch board',
+      'adm.vehTitle': 'Dispatch recommendations',
+      'adm.vehDesc': 'Bookings with the same pickup date × 2-hour slot × same area are grouped into one vehicle. Up to 40 bags per vehicle (demo rule).',
+      'adm.tblTitle': 'Reservations',
+      'adm.connTitle': 'Connection status',
+      'adm.connDesc': 'Key values are never shown — only whether each key is set or empty, and the result of the last call.',
+      'adm.footer': '<b>Demo data</b> labelled reservations are fictional, made for the demo. This demo page opens without login; a real deployment would require one.',
+      'th.tag': 'Tag no.', 'th.name': 'Name', 'th.addr': 'Pickup address', 'th.pickup': 'Pickup time', 'th.flight': 'Flight', 'th.bags': 'Bags', 'th.party': 'Party', 'th.price': 'Fare', 'th.voucher': 'Bus discount', 'th.status': 'Status',
+      'adm.loading': 'Loading…',
+      'adm.loadFail': 'Could not load reservations.',
+      'adm.storage': 'Storage: {s}',
+      'tile.all': 'Total bookings', 'tile.pending': 'Awaiting dispatch', 'tile.bags': 'Total bags', 'tile.veh': 'Vehicles',
+      'unit.cases': '{n}', 'unit.bags': '{n}', 'unit.cars': '{n}', 'unit.people': '{n}',
+      'st.접수': 'Received', 'st.배차 완료': 'Dispatched', 'st.수거 완료': 'Picked up', 'st.공항 인도': 'Delivered',
+      'st.전체': 'All',
+      'st.next': 'Mark {s}',
+      'st.done': 'Done',
+      'adm.region': 'Area {r}',
+      'veh.bagsLabel': '{b} of {m} bags',
+      'veh.count': '<b>{b}</b> / {m} bags · {n} booking(s)',
+      'veh.setDispatched': 'Mark as dispatched',
+      'veh.empty': 'No bookings to group yet. They will appear here once a customer books.',
+      'row.demoData': 'demo data',
+      'row.wish': '{h} requested',
+      'row.large': '({n} large)',
+      'row.na': 'N/A',
+      'row.voucher': '{round}{r}% · {p} people · demo value',
+      'row.empty': 'No matching reservations.',
+      'conn.keys': 'Key names',
+      'conn.ai': 'AI order',
+      'conn.last': 'Last response: {v}',
+      'conn.allFail': 'All failed → rule-based',
+      'conn.none': 'No calls yet',
+      'conn.ok': 'OK (live)',
+      'conn.fallback': '→ demo value',
+      'conn.flightApi': 'Weekly passenger flights API',
+      'conn.noticeApi': 'Passenger forecast API',
+      'conn.docs': 'Reference documents',
+      'conn.docsV': '{n} chunks (docs/답변참고문서/청킹)',
+      'conn.fail': 'Could not load connection status.',
+      'v.값 있음': 'set', 'v.비어 있음': 'empty',
+    },
+  };
+
+  // 서버가 한국어로 돌려주는 알려진 문구를 영어 화면에서 바꿔 보여 준다 (모르는 문구는 그대로)
+  const SERVER_EN = {
+    '승객예고 API': 'Passenger forecast API',
+    '여객편 주간 운항 현황 API': 'Weekly passenger flights API',
+    '홈드랍 데모 규칙': 'Home Drop demo rules',
+    '실시간': 'live',
+  };
+  // 챗봇 빠른 답변: 화면에는 영어로 보여 주되, 서버에는 원래 한국어를 보낸다 (서버가 한국어 문장을 해석하기 때문)
+  const QUICK_EN = {
+    '짐 맡기고 싶어요': 'I want to drop off my luggage',
+    '캐리어에 넣으면 안 되는 물건이 뭐예요?': 'What can\'t I put in my luggage?',
+    '홈드랍은 어느 지역에서 쓸 수 있나요?': 'Where can I use Home Drop?',
+    '요금이 얼마예요?': 'How much does it cost?',
+    '넣으면 안 되는 물건은?': 'What can\'t I pack?',
+    '언제 수거하러 오나요?': 'When do you pick up?',
+    '김가상 010-0000-0000': 'Gim Gasang 010-0000-0000',
+    '서울 강남구 테헤란로 1': 'Seoul, Gangnam-gu, Teheran-ro 1',
+    '아니요, 미주 노선이 아니에요': 'No, not an Americas route',
+    '네, 미주 노선이에요': 'Yes, Americas route',
+    '네, 마쳤어요': 'Yes, done',
+    '아니요, 아직이에요': 'No, not yet',
+    '아니요': 'No',
+    '네, 어린이 혼자 타요': 'Yes, a child travels alone',
+    '캐리어 1개': '1 bag', '캐리어 2개': '2 bags', '캐리어 3개': '3 bags', '캐리어 4개': '4 bags',
+    '대형 없어요': 'No large bags', '대형 1개': '1 large', '대형 2개': '2 large',
+    '1명': '1 person', '2명': '2 people', '3명': '3 people', '4명': '4 people',
+    '오전 10시': '10 AM', '오후 2시': '2 PM', '오후 4시': '4 PM', '오후 6시': '6 PM',
+    '예, 예약할게요': 'Yes, book it', '수정할래요': 'I want to edit',
+    '처음부터 다시': 'Start over', '새 예약': 'New booking', '다시 시도': 'Try again',
+  };
+
+  let lang = store.get('hd-lang');
+  if (lang !== 'ko' && lang !== 'en') lang = /^ko/i.test(navigator.language || 'ko') ? 'ko' : 'en';
+
+  const t = (key, vars) => {
+    let s = (D[lang] && D[lang][key]) ?? D.ko[key] ?? key;
+    if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+    return s;
+  };
+  const num = n => Number(n).toLocaleString(lang === 'en' ? 'en-US' : 'ko-KR');
+  const won = n => t('won', { n: num(n) });
+  const srv = s => (lang === 'en' && SERVER_EN[s]) || s;
+  const quickLabel = s => (lang === 'en' && QUICK_EN[s]) || s;
+
+  function applyStatic() {
+    root.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.querySelectorAll('[data-i18n-attr]').forEach(el => {
+      el.dataset.i18nAttr.split(';').forEach(p => { const [a, k] = p.split(':'); if (a && k) el.setAttribute(a.trim(), t(k.trim())); });
+    });
+    const page = document.body.dataset.page;
+    if (page) {
+      document.title = t('title.' + page);
+      const m = document.querySelector('meta[name="description"]');
+      if (m) m.content = t('meta.' + page);
+    }
+    document.querySelectorAll('.lang-btn').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.lang === lang)); });
+    syncThemeButton();
+  }
+
+  // ---- 테마
+  const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  const theme = () => root.dataset.theme === 'dark' ? 'dark' : 'light';
+  function setTheme(v, save) {
+    root.dataset.theme = v;
+    if (save) store.set('hd-theme', v);
+    const m = document.querySelector('meta[name="color-scheme"]');
+    if (m) m.content = v;
+    syncThemeButton();
+  }
+  function syncThemeButton() {
+    const b = document.getElementById('themeBtn');
+    if (!b) return;
+    const label = t(theme() === 'dark' ? 'theme.toLight' : 'theme.toDark');
+    b.setAttribute('aria-label', label); b.title = label;
+  }
+  // 저장된 선택이 없으면 기기 설정을 따라가고, 기기 설정이 바뀌면 같이 바뀐다
+  if (mq && mq.addEventListener) mq.addEventListener('change', e => { if (!store.get('hd-theme')) setTheme(e.matches ? 'dark' : 'light', false); });
+
+  function setLang(v) {
+    if (v !== 'ko' && v !== 'en') return;
+    lang = v; store.set('hd-lang', v);
+    applyStatic();
+    window.dispatchEvent(new CustomEvent('langchange', { detail: v }));
+  }
+
+  window.t = t;
+  window.i18n = { t, num, won, srv, quickLabel, get lang() { return lang; }, setLang };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('themeBtn')?.addEventListener('click', () => setTheme(theme() === 'dark' ? 'light' : 'dark', true));
+    document.querySelectorAll('.lang-btn').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+    applyStatic();
+  });
+})();

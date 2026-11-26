@@ -29,8 +29,8 @@
   findSlides().then(srcs => {
     if (!srcs.length) return;
     const track = document.getElementById('bTrack'), dots = document.getElementById('bDots');
-    track.innerHTML = srcs.map((s, i) => `<a class="slide" href="#chat" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${srcs.length}"><img src="${s}" alt="홈드랍 홍보 ${i + 1}" draggable="false"></a>`).join('');
-    dots.innerHTML = srcs.map((_, i) => `<button type="button" role="tab" aria-label="${i + 1}번 배너" data-i="${i}"></button>`).join('');
+    track.innerHTML = srcs.map((s, i) => `<a class="slide" href="#chat" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${srcs.length}"><img src="${s}" alt="${window.t('banner.alt', { n: i + 1 })}" draggable="false"></a>`).join('');
+    dots.innerHTML = srcs.map((_, i) => `<button type="button" role="tab" aria-label="${window.t('banner.nth', { n: i + 1 })}" data-i="${i}"></button>`).join('');
     if (ratio) sec.style.setProperty('--ratio', ratio.toFixed(4));
     sec.hidden = false;
     document.getElementById('hero').hidden = true;
@@ -71,6 +71,10 @@
     document.getElementById('bPrev').onclick = () => { go(cur - 1, -1); start(); };
     dots.onclick = e => { const b = e.target.closest('button'); if (b) { const i = Number(b.dataset.i); go(i, i > cur ? 1 : -1); start(); } };
     document.addEventListener('visibilitychange', start);
+    window.addEventListener('langchange', () => {
+      slides.forEach((sl, i) => { sl.querySelector('img').alt = window.t('banner.alt', { n: i + 1 }); });
+      dots.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-label', window.t('banner.nth', { n: i + 1 })));
+    });
 
     // 손가락으로 밀기: 오른쪽으로 밀면 다음(왼쪽 → 오른쪽), 왼쪽으로 밀면 이전
     let x0 = null;
