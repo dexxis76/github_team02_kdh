@@ -9,7 +9,7 @@
   const LV = ['--c0', '--c1', '--c2', '--c3', '--c4'];
   const esc2 = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  const map = L.map(el, { zoomControl: false, scrollWheelZoom: false, maxZoom: 17, attributionControl: true }).setView([37.52, 127.0], 9);
+  const map = L.map(el, { zoomControl: false, scrollWheelZoom: true, wheelPxPerZoomLevel: 90, maxZoom: 17, attributionControl: true }).setView([37.52, 127.0], 9);
   L.control.zoom({ position: 'topright', zoomInTitle: T('map.zoomIn'), zoomOutTitle: T('map.zoomOut') }).addTo(map);
   let fitBounds = null;
   const Fit = L.Control.extend({
