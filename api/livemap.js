@@ -5,6 +5,7 @@
 const { requireAdmin } = require('./_admin');
 const its = require('./_its');
 const geo = require('./_geo');
+const { ZONES } = require('./_zones');
 
 const num = v => { const n = parseFloat(String(v).replace(/,/g, '')); return Number.isFinite(n) ? n : null; };
 const pick = (o, names) => { for (const n of names) if (o[n] != null && o[n] !== '') return o[n]; return null; };
@@ -35,7 +36,7 @@ function shape(d) {
 module.exports = async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
   const kind = new URL(req.url, 'http://x').searchParams.get('kind') || '';
-  if (kind === 'base') return res.status(200).json({ hasKey: its.hasKey(), centers: geo.CENTERS, airport: geo.AIRPORT, bbox: geo.BBOX });
+  if (kind === 'base') return res.status(200).json({ hasKey: its.hasKey(), centers: geo.CENTERS, airport: geo.AIRPORT, bbox: geo.BBOX, zones: ZONES.map(z => ({ car: z.car, name: z.name, color: z.color, districts: z.districts })) });
   if (kind === 'net') {
     const { fetchT } = require('./_util');
     const targets = ['https://openapi.its.go.kr:9443/', 'https://openapi.its.go.kr/', 'http://openapi.its.go.kr:8080/', 'https://www.its.go.kr/', 'https://apis.data.go.kr/'];

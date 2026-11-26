@@ -387,3 +387,24 @@ tr:last-child td { border-bottom: 0; }
 :root[data-theme="dark"] .area-label { color: #e8eaed; text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 3px #000; }
 .mapEl.nolabel .area-label { display: none; }
 .mapEl.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.7); }
+
+/* 호차 */
+.cars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 20px; }
+.carcard { background: var(--card); border-radius: var(--r); padding: 16px 18px; border-top: 5px solid var(--car); }
+.carcard h4 { margin: 0 0 4px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.carcard h4 i, .veh h4 .carno { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--car); color: #fff; display: inline-grid; place-items: center; font-size: 14px; flex: none; }
+.carcard p { margin: 4px 0 0; font-size: 14px; }
+.carcard .areas { color: var(--sub); font-size: 12px; line-height: 18px; }
+.muted { color: var(--sub); }
+.veh { border-top: 5px solid var(--car); }
+.veh h4 { display: flex; align-items: center; gap: 8px; }
+.stops { margin: 8px 0 4px; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; }
+.stops li b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--dark); color: #fff; font-size: 12px; margin-right: 4px; }
+.stops li small { color: var(--mute); }
+.veh p.muted { font-size: 12px; margin: 4px 0 0; }
+.car-legend { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; }
+.car-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.car-legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; opacity: .85; }
+.rsv-pin { background: var(--car, var(--cta)); }
+
+.stops .moved { font-size: 11px; font-weight: 700; color: var(--amber); border: 1px solid var(--amber-line); border-radius: 100px; padding: 0 6px; white-space: nowrap; }

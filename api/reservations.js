@@ -3,10 +3,13 @@
 const store = require('./_store');
 const R = require('./_rules');
 const { requireAdmin } = require('./_admin');
+const { ZONES } = require('./_zones');
 
 function snapshot() {
   const items = store.list().sort((a, b) => (a.pickupDate + String(a.pickupHour).padStart(2, '0') + a.tag).localeCompare(b.pickupDate + String(b.pickupHour).padStart(2, '0') + b.tag));
-  return { items, vehicles: store.dispatch(items), storage: store.storage(), statuses: R.STATUS, maxPerVehicle: R.MAX_BAGS_PER_VEHICLE };
+  const asg = store.assign(items);
+  const withCar = items.map(i => ({ ...i, car: asg[i.tag].car, homeCar: asg[i.tag].home, moved: asg[i.tag].moved }));
+  return { items: withCar, vehicles: store.dispatch(items), cars: ZONES.map(z => ({ car: z.car, name: z.name, color: z.color, districts: z.districts })), storage: store.storage(), statuses: R.STATUS, maxPerVehicle: R.MAX_BAGS_PER_VEHICLE };
 }
 
 module.exports = async function handler(req, res) {

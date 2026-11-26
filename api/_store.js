@@ -60,33 +60,97 @@ function setStatus(tag, status) {
   return r;
 }
 
-// 배차 추천: 같은 수거일 × 2시간 시간대 × 같은 생활권역 → 한 차량, 최대 캐리어 40개
+// 배차 추천: 차량은 4대(1~4호차) 고정이고, 수거지(구·시·군)가 속한 호차(기본 구역, _zones.js)가 먼저 맡는다.
+// 공평하게 나누기: 같은 수거일 × 2시간 시간대 안에서 한 호차에 일이 쏠리면, 가장 바쁜 호차의 예약 중 이웃 호차 구역에 가까운 것을
+// 가장 한가한 호차로 넘긴다. 일이 비슷해지거나 더 줄일 수 없을 때까지 반복한다(적재 40개 초과도 우선 해소).
+//   작업량 = 캐리어 수 + 방문지당 3 + 공항까지 직선거리 10km당 1 (데모 값)
+// 방문 순서: 공항에서 먼 곳 → 가까운 곳(직선거리 기준). 실시간 교통·사고는 아직 반영하지 않는다.
+const { zoneOf, ZONES } = require('./_zones');
+const { CENTERS, AIRPORT } = require('./_geo');
+
+const STOP_COST = 3, KM_PER_UNIT = 10, GAP = 12, NEAR_KM = 25;
+const km = (a, b) => {
+  const rad = x => x * Math.PI / 180, dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+const AP = [AIRPORT.T1.lat, AIRPORT.T1.lon];
+const toAirport = r => (CENTERS[r.district] ? km(CENTERS[r.district], AP) : 0);
+const work = r => r.bags + STOP_COST + toAirport(r) / KM_PER_UNIT;
+// 어떤 지역에서 호차 B 의 기본 구역까지 가장 가까운 거리(km)
+const toZone = (district, car) => {
+  const c = CENTERS[district], z = ZONES.find(x => x.car === car);
+  if (!c || !z) return Infinity;
+  return Math.min(...z.districts.map(d => (CENTERS[d] ? km(c, CENTERS[d]) : Infinity)));
+};
+
+// 한 시간대의 예약들을 호차에 나눈다. 반환: { tag: { car, home, moved } }
+function balance(rs) {
+  const A = {};
+  for (const r of rs) { const z = zoneOf(r.district); const car = z ? z.car : 0; A[r.tag] = { car, home: car, moved: false }; }
+  const cars = ZONES.map(z => z.car);
+  for (let guard = 0; guard < 60; guard++) {
+    const load = {}, bags = {}, n = {};
+    for (const c of cars) { load[c] = 0; bags[c] = 0; n[c] = 0; }
+    for (const r of rs) { const c = A[r.tag].car; if (!c) continue; load[c] += work(r); bags[c] += r.bags; n[c]++; }
+    let best = null;
+    for (const from of cars) {
+      if (n[from] < 2) continue; // 한 곳뿐이면 넘기지 않는다
+      for (const to of cars) {
+        if (to === from) continue;
+        const gap = load[from] - load[to];
+        for (const r of rs) {
+          if (A[r.tag].car !== from) continue;
+          const w = work(r), near = toZone(r.district, to);
+          if (near > NEAR_KM) continue; // 너무 먼 호차로는 넘기지 않는다
+          const relieve = bags[from] > R.MAX_BAGS_PER_VEHICLE && bags[to] + r.bags <= R.MAX_BAGS_PER_VEHICLE;
+          const improves = gap > GAP && Math.abs(gap - 2 * w) < gap - 1;
+          if (!relieve && !improves) continue;
+          const score = (relieve ? 0 : 1000) + near - gap / 100; // 적재 해소 우선, 그다음 가까운 곳, 격차가 큰 쪽
+          if (!best || score < best.score) best = { tag: r.tag, to, score };
+        }
+      }
+    }
+    if (!best) break;
+    A[best.tag].car = best.to; A[best.tag].moved = true;
+  }
+  return A;
+}
+
+// 모든 예약의 배정 결과: { tag: { car, home, moved } }
+function assign(items) {
+  const bySlot = {};
+  for (const r of items) (bySlot[`${r.pickupDate}|${R.slotStart(r.pickupHour)}`] = bySlot[`${r.pickupDate}|${R.slotStart(r.pickupHour)}`] || []).push(r);
+  const out = {};
+  for (const rs of Object.values(bySlot)) Object.assign(out, balance(rs));
+  return out;
+}
+
 function dispatch(items) {
+  const asg = assign(items);
   const groups = {};
   for (const r of items) {
-    const s = R.slotStart(r.pickupHour);
-    const k = `${r.pickupDate}|${s}|${r.region}`;
-    (groups[k] = groups[k] || []).push(r);
+    const car = asg[r.tag].car, slot = R.slotStart(r.pickupHour);
+    (groups[`${r.pickupDate}|${slot}|${car}`] = groups[`${r.pickupDate}|${slot}|${car}`] || []).push(r);
   }
   const vehicles = [];
   for (const [k, rs] of Object.entries(groups)) {
-    const [date, s, region] = k.split('|');
-    rs.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const cars = [];
-    for (const r of rs) {
-      let car = cars.find(c => c.bags + r.bags <= R.MAX_BAGS_PER_VEHICLE);
-      if (!car) { car = { bags: 0, tags: [], items: [] }; cars.push(car); }
-      car.bags += r.bags; car.tags.push(r.tag); car.items.push(r);
-    }
-    cars.forEach((c, i) => vehicles.push({
-      id: `V-${date.replace(/-/g, '')}-${s}-${region}-${i + 1}`, pickupDate: date, slot: R.slotLabel(Number(s)), region,
-      bags: c.bags, max: R.MAX_BAGS_PER_VEHICLE, tags: c.tags,
-      districts: [...new Set(c.items.map(x => x.district))],
-      statuses: [...new Set(c.items.map(x => x.status))],
-    }));
+    const [date, slot, car] = k.split('|');
+    const z = ZONES.find(x => x.car === Number(car));
+    rs.sort((a, b) => toAirport(b) - toAirport(a) || a.tag.localeCompare(b.tag)); // 먼 곳 → 가까운 곳
+    const bags = rs.reduce((n, r) => n + r.bags, 0);
+    vehicles.push({
+      id: `C${car}-${date.replace(/-/g, '')}-${slot}`, car: Number(car), carName: z ? z.name : '', color: z ? z.color : '#9aa0aa',
+      pickupDate: date, slot: R.slotLabel(Number(slot)), bags, max: R.MAX_BAGS_PER_VEHICLE, over: bags > R.MAX_BAGS_PER_VEHICLE,
+      load: Math.round(rs.reduce((n, r) => n + work(r), 0)),
+      tags: rs.map(r => r.tag),
+      stops: rs.map((r, i) => ({ n: i + 1, tag: r.tag, district: r.district, bags: r.bags, km: Math.round(toAirport(r)), moved: asg[r.tag].moved, home: asg[r.tag].home })),
+      districts: [...new Set(rs.map(x => x.district))],
+      statuses: [...new Set(rs.map(x => x.status))],
+    });
   }
-  return vehicles.sort((a, b) => (a.pickupDate + a.slot + a.region).localeCompare(b.pickupDate + b.slot + b.region));
+  return vehicles.sort((a, b) => (a.pickupDate + a.slot + String(a.car)).localeCompare(b.pickupDate + b.slot + String(b.car)));
 }
 
 const storage = () => (ON_VERCEL ? '서버 메모리(쉬었다 깨면 처음 값으로 돌아감)' : '파일(data/reservations.json)');
-module.exports = { create, list, setStatus, dispatch, storage };
+module.exports = { create, list, setStatus, dispatch, assign, storage };
