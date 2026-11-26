@@ -36,9 +36,16 @@
 
   // ---- 서울·경기 행정구역 경계
   let areas = null, base = null, traffic = null, trafficErr = null, loading = false, pins = L.layerGroup().addTo(map), roads = L.layerGroup().addTo(map);
+  const zoneColor = {}, zoneCar = {};
   function areaStyle(f) {
-    const seoul = f.properties.p === '서울';
-    return { color: css(seoul ? '--seoul' : '--gg'), weight: 1.4, opacity: .9, fillColor: css(seoul ? '--seoul' : '--gg'), fillOpacity: .13 };
+    const c = zoneColor[f.properties.n] || css('--mute');
+    return { color: c, weight: 1.4, opacity: .9, fillColor: c, fillOpacity: .18 };
+  }
+  function setZones() {
+    if (!base || !base.zones) return;
+    for (const z of base.zones) for (const d of z.districts) { zoneColor[d] = z.color; zoneCar[d] = z.car; }
+    document.getElementById('carLegend').innerHTML = base.zones.map(z => `<span><i style="background:${z.color}"></i>${esc2(TV('car.label', { n: z.car }))} ${esc2(z.name)}</span>`).join('');
+    if (areas) areas.setStyle(areaStyle);
   }
   async function loadAreas() {
     try {
@@ -47,6 +54,7 @@
         style: areaStyle,
         onEachFeature: (f, layer) => {
           layer.bindTooltip(f.properties.n, { permanent: true, direction: 'center', className: 'area-label' });
+          layer.bindPopup(() => { const c = zoneCar[f.properties.n]; return `<b>${esc2(f.properties.n)}</b><br>${c ? esc2(TV('car.label', { n: c })) : esc2(T('car.none'))}`; });
           layer.on('mouseover', () => layer.setStyle({ fillOpacity: .3, weight: 2.2 }));
           layer.on('mouseout', () => layer.setStyle(areaStyle(f)));
         },
@@ -71,8 +79,9 @@
     for (const [d, n] of Object.entries(cnt)) {
       const c = base.centers[d]; if (!c) continue;
       const size = 24 + Math.min(n, 5) * 3;
-      L.marker(c, { icon: L.divIcon({ className: '', html: `<div class="rsv-pin" style="width:${size}px;height:${size}px">${n}</div>`, iconSize: [size, size] }), title: `${d} ${n}` })
-        .bindTooltip(`${esc2(d)} · ${n}`, { direction: 'top' }).addTo(pins);
+      const col = zoneColor[d] || css('--cta');
+      L.marker(c, { icon: L.divIcon({ className: '', html: `<div class="rsv-pin" style="width:${size}px;height:${size}px;background:${col}">${n}</div>`, iconSize: [size, size] }), title: `${d} ${n}` })
+        .bindTooltip(`${esc2(d)} · ${zoneCar[d] ? esc2(TV('car.label', { n: zoneCar[d] })) + ' · ' : ''}${n}`, { direction: 'top' }).addTo(pins);
     }
     for (const k of ['T1', 'T2']) {
       const a = base.airport[k];
@@ -108,7 +117,7 @@
 
   async function loadBase() {
     try { const r = await api('/api/livemap?kind=base'); if (r.ok) base = await r.json(); } catch { /* 상태로 표시 */ }
-    renderStatus(); drawPins();
+    setZones(); renderStatus(); drawPins();
   }
   async function loadTraffic() {
     if (!base || !base.hasKey || loading) return;
@@ -127,13 +136,13 @@
     if (!started) {
       started = true;
       map.invalidateSize(false); // 숨겨진 상태에서 만들어졌으므로 보이는 크기로 다시 계산
-      loadAreas(); await loadBase(); loadTraffic();
+      await loadBase(); loadAreas(); loadTraffic();
       setInterval(() => { if (!document.hidden && !document.getElementById('app').hidden) loadTraffic(); }, 5 * 60e3);
     } else drawPins();
   });
   document.getElementById('mapRefresh').addEventListener('click', loadTraffic);
   window.addEventListener('themechange', () => { setTiles(); if (areas) areas.setStyle(areaStyle); drawRoads(); });
-  window.addEventListener('langchange', () => { renderStatus(); fitCtl._a && (fitCtl._a.title = T('map.fit')); });
+  window.addEventListener('langchange', () => { setZones(); drawPins(); renderStatus(); fitCtl._a && (fitCtl._a.title = T('map.fit')); });
   window.addEventListener('resize', () => map.invalidateSize());
   renderStatus();
 })();

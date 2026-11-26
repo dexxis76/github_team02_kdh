@@ -60,32 +60,44 @@ function setStatus(tag, status) {
   return r;
 }
 
-// 배차 추천: 같은 수거일 × 2시간 시간대 × 같은 생활권역 → 한 차량, 최대 캐리어 40개
+// 배차 추천: 차량은 4대(1~4호차) 고정. 예약의 수거지(구·시·군)가 속한 호차가 맡고,
+// 같은 수거일 × 2시간 시간대 × 같은 호차를 한 묶음으로 본다. 한 묶음 최대 캐리어 40개를 넘으면 「적재 초과」로 표시한다(자동으로 옮기지 않음).
+// 방문 순서: 공항에서 먼 곳부터 가까운 곳 순(직선거리 기준). 실시간 교통·사고는 아직 반영하지 않는다.
+const { zoneOf } = require('./_zones');
+const { CENTERS, AIRPORT } = require('./_geo');
+
+const km = (a, b) => {
+  const rad = x => x * Math.PI / 180, dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+const toAirport = r => (CENTERS[r.district] ? km(CENTERS[r.district], [AIRPORT.T1.lat, AIRPORT.T1.lon]) : 0);
+
 function dispatch(items) {
   const groups = {};
   for (const r of items) {
-    const s = R.slotStart(r.pickupHour);
-    const k = `${r.pickupDate}|${s}|${r.region}`;
+    const z = zoneOf(r.district);
+    const car = z ? z.car : 0; // 0 = 구역 밖(미배정)
+    const slot = R.slotStart(r.pickupHour);
+    const k = `${r.pickupDate}|${slot}|${car}`;
     (groups[k] = groups[k] || []).push(r);
   }
   const vehicles = [];
   for (const [k, rs] of Object.entries(groups)) {
-    const [date, s, region] = k.split('|');
-    rs.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const cars = [];
-    for (const r of rs) {
-      let car = cars.find(c => c.bags + r.bags <= R.MAX_BAGS_PER_VEHICLE);
-      if (!car) { car = { bags: 0, tags: [], items: [] }; cars.push(car); }
-      car.bags += r.bags; car.tags.push(r.tag); car.items.push(r);
-    }
-    cars.forEach((c, i) => vehicles.push({
-      id: `V-${date.replace(/-/g, '')}-${s}-${region}-${i + 1}`, pickupDate: date, slot: R.slotLabel(Number(s)), region,
-      bags: c.bags, max: R.MAX_BAGS_PER_VEHICLE, tags: c.tags,
-      districts: [...new Set(c.items.map(x => x.district))],
-      statuses: [...new Set(c.items.map(x => x.status))],
-    }));
+    const [date, slot, car] = k.split('|');
+    const z = zoneOf(rs[0].district);
+    rs.sort((a, b) => toAirport(b) - toAirport(a) || a.tag.localeCompare(b.tag)); // 먼 곳 → 가까운 곳
+    const bags = rs.reduce((n, r) => n + r.bags, 0);
+    vehicles.push({
+      id: `C${car}-${date.replace(/-/g, '')}-${slot}`, car: Number(car), carName: z ? z.name : '', color: z ? z.color : '#9aa0aa',
+      pickupDate: date, slot: R.slotLabel(Number(slot)), bags, max: R.MAX_BAGS_PER_VEHICLE, over: bags > R.MAX_BAGS_PER_VEHICLE,
+      tags: rs.map(r => r.tag),
+      stops: rs.map((r, i) => ({ n: i + 1, tag: r.tag, district: r.district, bags: r.bags, km: Math.round(toAirport(r)) })),
+      districts: [...new Set(rs.map(x => x.district))],
+      statuses: [...new Set(rs.map(x => x.status))],
+    });
   }
-  return vehicles.sort((a, b) => (a.pickupDate + a.slot + a.region).localeCompare(b.pickupDate + b.slot + b.region));
+  return vehicles.sort((a, b) => (a.pickupDate + a.slot + String(a.car)).localeCompare(b.pickupDate + b.slot + String(b.car)));
 }
 
 const storage = () => (ON_VERCEL ? '서버 메모리(쉬었다 깨면 처음 값으로 돌아감)' : '파일(data/reservations.json)');

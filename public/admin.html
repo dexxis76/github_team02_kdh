@@ -61,8 +61,7 @@
           <span><i style="background:var(--c2)"></i><b data-i18n="map.l2">서행</b></span>
           <span><i style="background:var(--c3)"></i><b data-i18n="map.l3">지체</b></span>
           <span><i style="background:var(--c4)"></i><b data-i18n="map.l4">정체</b></span>
-          <span><i class="area" style="background:var(--seoul)"></i><b data-i18n="map.seoul">서울</b></span>
-          <span><i class="area" style="background:var(--gg)"></i><b data-i18n="map.gg">경기도</b></span>
+          <span id="carLegend" class="car-legend"></span>
           <span><i class="dot" style="background:var(--cta)"></i><b data-i18n="map.pick">예약 위치</b></span>
           <span><i class="dot sq" style="background:var(--red)"></i><b data-i18n="map.airport">인천공항</b></span>
         </div>
@@ -81,6 +80,7 @@
 
     <h3 style="font-size:30px;margin:56px 0 4px" data-i18n="adm.vehTitle">배차 추천</h3>
     <p class="desc" style="margin-top:0" data-i18n="adm.vehDesc">같은 수거일 × 2시간 시간대 × 같은 생활권역을 한 차량에 묶어요. 한 차량 최대 캐리어 40개 (데모 규칙)</p>
+    <div id="cars" class="cars-grid"></div>
     <div id="veh" class="veh-grid"></div>
 
     <h3 style="font-size:30px;margin:56px 0 12px" data-i18n="adm.tblTitle">예약 표</h3>
