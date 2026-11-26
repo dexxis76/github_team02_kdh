@@ -31,7 +31,19 @@
   </div>
 </header>
 
-<main>
+<main id="gate" class="gate-wrap">
+  <form class="gate" id="gateForm" autocomplete="off">
+    <h1 data-i18n="gate.title">관리자 확인</h1>
+    <p data-i18n="gate.desc">관리자 화면은 비밀번호를 입력해야 열려요.</p>
+    <label for="gatePw" data-i18n="gate.label">비밀번호</label>
+    <input id="gatePw" type="password" inputmode="numeric" autocomplete="off" required>
+    <button class="btn btn-cta" type="submit" data-i18n="gate.open">열기</button>
+    <p class="gate-hint" data-i18n="gate.hint">비밀번호는 0000입니다</p>
+    <p class="gate-err" id="gateErr" role="alert" hidden></p>
+  </form>
+</main>
+
+<main id="app" hidden>
 <section class="sec" id="board" style="padding-top:56px">
   <div class="wrap">
     <h1 class="en" style="margin:0" data-i18n="adm.en">Dispatch Board</h1>
@@ -57,7 +69,7 @@
   </div>
 </section>
 </main>
-<footer><div class="wrap" data-i18n-html="adm.footer"><b>데모 데이터</b> 표시가 붙은 예약은 시연용으로 만든 가상 예약이에요. 로그인 없이 열리는 데모 화면이라 실제 운영에는 로그인이 필요해요.</div><div class="wrap"><a class="foot-link" href="/terms" data-i18n="footer.terms">이용약관</a> <a class="foot-link" href="/privacy" data-i18n="footer.privacy">개인정보처리방침</a></div></footer>
+<footer><div class="wrap" data-i18n-html="adm.footer"><b>데모 데이터</b> 표시가 붙은 예약은 시연용으로 만든 가상 예약이에요. 로그인 없이 열리는 데모 화면이라 실제 운영에는 로그인이 필요해요.</div><div class="wrap"><a class="foot-link" href="/about" data-i18n="footer.about">홈드랍이란?</a> <a class="foot-link" href="/terms" data-i18n="footer.terms">이용약관</a> <a class="foot-link" href="/privacy" data-i18n="footer.privacy">개인정보처리방침</a> <a class="foot-link" href="/voice" data-i18n="footer.voice">고객의 소리</a></div></footer>
 <script src="/i18n.js"></script>
 <script src="/admin.js"></script>
 </body>

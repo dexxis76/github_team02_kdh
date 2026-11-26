@@ -10,11 +10,41 @@ let data = null, filter = '전체';
 const hh = h => `${String(h).padStart(2, '0')}:00`;
 const stClass = s => 's' + (STATUS.indexOf(s) + 1);
 
+// ---- 비밀번호 확인: 서버(API)가 헤더의 비밀번호를 검사한다. 입력한 값은 이 탭에만 기억한다(탭을 닫으면 사라짐)
+let pw = null, timer = null;
+try { pw = sessionStorage.getItem('hd-admin'); } catch { /* 저장소를 못 쓰면 매번 입력 */ }
+const api = (url, opts = {}) => fetch(url, { ...opts, headers: { ...(opts.headers || {}), 'x-admin-password': pw || '' } });
+function showGate(msgKey) {
+  clearInterval(timer); timer = null; pw = null; data = null; connData = null;
+  try { sessionStorage.removeItem('hd-admin'); } catch { /* 무시 */ }
+  $('#app').hidden = true; $('#gate').hidden = false;
+  const err = $('#gateErr'); err.hidden = !msgKey; if (msgKey) err.textContent = window.t(msgKey);
+  $('#gatePw').value = ''; $('#gatePw').focus();
+}
+function showApp() {
+  $('#gate').hidden = true; $('#app').hidden = false;
+  load(); conn();
+  clearInterval(timer); timer = setInterval(() => { load(); conn(); }, 10000);
+}
+$('#gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const typed = $('#gatePw').value;
+  try {
+    const r = await fetch('/api/reservations', { headers: { 'x-admin-password': typed } });
+    if (r.status === 401) return showGate('gate.wrong');
+    if (!r.ok) return showGate('gate.error');
+    pw = typed;
+    try { sessionStorage.setItem('hd-admin', typed); } catch { /* 무시 */ }
+    data = await r.json(); loadFail = false; showApp();
+  } catch { showGate('gate.error'); }
+});
+
 async function load() {
-  try { data = await (await fetch('/api/reservations')).json(); loadFail = false; render(); } catch { loadFail = true; $('#storage').textContent = window.t('adm.loadFail'); }
+  try { const r = await api('/api/reservations'); if (r.status === 401) return showGate('gate.wrong'); data = await r.json(); loadFail = false; render(); } catch { loadFail = true; $('#storage').textContent = window.t('adm.loadFail'); }
 }
 async function patch(body) {
-  const r = await fetch('/api/reservations', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const r = await api('/api/reservations', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (r.status === 401) return showGate('gate.wrong');
   if (r.ok) { data = await r.json(); render(); }
 }
 
@@ -67,7 +97,7 @@ document.addEventListener('click', e => {
 });
 
 async function conn() {
-  try { connData = await (await fetch('/api/status')).json(); connFail = false; } catch { connFail = true; }
+  try { const r = await api('/api/status'); if (r.status === 401) return showGate('gate.wrong'); connData = await r.json(); connFail = false; } catch { connFail = true; }
   renderConn();
 }
 function renderConn() {
@@ -83,7 +113,7 @@ function renderConn() {
       <div><b>${t('conn.noticeApi')}</b>${pub(j.lastPublic.notice)}</div>
       <div><b>${t('conn.docs')}</b>${t('conn.docsV', { n: j.docs })}</div>`;
 }
-load(); conn();
-setInterval(() => { load(); conn(); }, 10000);
+// 저장된 비밀번호가 있으면 바로 열어 보고, 맞지 않으면 입력창을 보여 준다
+if (pw) { api('/api/reservations').then(r => (r.ok ? showApp() : showGate())).catch(() => showGate()); } else { $('#gatePw').focus(); }
 
 window.addEventListener('langchange', () => { if (loadFail) $('#storage').textContent = window.t('adm.loadFail'); render(); renderConn(); });

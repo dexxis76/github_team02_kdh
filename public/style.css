@@ -240,6 +240,19 @@ footer b { color: #fff; }
 .foot-link { display: inline-block; margin-top: 14px; padding: 6px 16px; border: 1px solid #777; border-radius: 100px; color: #fff; text-decoration: none; font-weight: 700; }
 .foot-link:hover { border-color: #fff; background: rgba(255, 255, 255, .1); }
 
+/* 관리자 비밀번호 입력 */
+.gate-wrap[hidden], #app[hidden] { display: none; }
+.gate-wrap { display: grid; place-items: center; min-height: calc(100vh - 65px - 180px); padding: 48px 16px; }
+.gate { min-width: 0; width: min(400px, 100%); background: var(--card); border-radius: var(--r); padding: 32px 28px; display: grid; gap: 10px; }
+.gate h1 { margin: 0; font-size: 28px; }
+.gate p { margin: 0; color: var(--sub); }
+.gate label { font-weight: 700; margin-top: 8px; }
+.gate input { width: 100%; min-width: 0; height: 50px; border: 1px solid var(--line2); border-radius: var(--r); padding: 0 16px; font: inherit; background: var(--surface); color: var(--ink); letter-spacing: 4px; }
+.gate input:focus { outline: 2px solid var(--blue); border-color: var(--blue); }
+.gate .btn { width: 100%; margin-top: 4px; cursor: pointer; }
+.gate .gate-hint { text-align: center; font-size: 14px; }
+.gate .gate-err { color: var(--red); font-weight: 700; text-align: center; }
+
 /* 이용약관 */
 .terms { max-width: 860px; padding: 48px 0 0; }
 .terms h1 { margin: 0; font-size: 44px; line-height: 1.2; }
@@ -325,5 +338,13 @@ tr:last-child td { border-bottom: 0; }
   .bars, .axis { gap: 2px; }
   .bar em, .bar span { display: none; }
   .axis span:not(:nth-child(4n+1)) { visibility: hidden; }
+}
+@media (max-width: 480px) {
+  /* 좁은 화면: 메뉴를 두 번째 줄로 내려 헤더가 옆으로 넘치지 않게 한다 */
+  .hd { height: auto; padding: 8px 0; }
+  .hd .wrap { flex-wrap: wrap; row-gap: 4px; }
+  .gnb { order: 3; width: 100%; justify-content: center; }
+  .gnb a { padding: 6px 0; }
+  .sec { scroll-margin-top: 100px; }
 }
 @media (prefers-reduced-motion: reduce) { html, .msgs { scroll-behavior: auto; } }

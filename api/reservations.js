@@ -2,6 +2,7 @@
 // PATCH /api/reservations {tag|vehicle, status} — 상태 바꾸기 (접수 → 배차 완료 → 수거 완료 → 공항 인도, 앞으로만)
 const store = require('./_store');
 const R = require('./_rules');
+const { requireAdmin } = require('./_admin');
 
 function snapshot() {
   const items = store.list().sort((a, b) => (a.pickupDate + String(a.pickupHour).padStart(2, '0') + a.tag).localeCompare(b.pickupDate + String(b.pickupHour).padStart(2, '0') + b.tag));
@@ -9,6 +10,7 @@ function snapshot() {
 }
 
 module.exports = async function handler(req, res) {
+  if (!requireAdmin(req, res)) return;
   if (req.method === 'GET') return res.status(200).json(snapshot());
   if (req.method === 'PATCH' || req.method === 'POST') {
     const b = req.body || {};
