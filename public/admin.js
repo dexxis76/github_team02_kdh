@@ -87,6 +87,7 @@ function render() {
       <td><span class="st ${stClass(i.status)}">${esc(stName(i.status))}</span></td>
       <td>${next ? `<button class="mini" data-t="${esc(i.tag)}" data-s="${esc(next)}">${esc(t('st.next', { s: stName(next) }))}</button>` : `<button class="mini" disabled>${t('st.done')}</button>`}</td></tr>`;
   }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--sub);padding:32px">${t('row.empty')}</td></tr>`;
+  window.dispatchEvent(new Event('admin-render'));
 }
 
 document.addEventListener('click', e => {

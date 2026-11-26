@@ -240,6 +240,27 @@ footer b { color: #fff; }
 .foot-link { display: inline-block; margin-top: 14px; padding: 6px 16px; border: 1px solid #777; border-radius: 100px; color: #fff; text-decoration: none; font-weight: 700; }
 .foot-link:hover { border-color: #fff; background: rgba(255, 255, 255, .1); }
 
+/* 관리자 지도 */
+:root { --c1: #2fbf71; --c2: #f0a020; --c3: #e5484d; --c4: #8f1d2c; --c0: #9aa0aa; }
+:root[data-theme="dark"] { --c1: #3ddc84; --c2: #ffb340; --c3: #ff6b6b; --c4: #d63a5a; --c0: #5d6572; }
+.map-grid { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 24px; margin-top: 20px; align-items: start; }
+.map-box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
+.map-box canvas { display: block; width: 100%; height: auto; aspect-ratio: 100 / 117; border-radius: 4px; }
+.map-side { display: grid; gap: 14px; }
+.map-side .pill { justify-self: start; }
+.map-status { margin: 0; color: var(--sub); font-size: 14px; }
+.map-status.err { color: var(--amber); font-weight: 700; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 6px; border-radius: 3px; display: inline-block; }
+.legend i.dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend i.dot.sq { border-radius: 2px; }
+.legend i.ln { height: 4px; width: 24px; }
+.legend b { font-weight: 500; }
+.route-log { display: grid; gap: 8px; font-size: 14px; }
+.route-log p { margin: 0; padding: 10px 14px; background: var(--card); border-radius: var(--r); border-left: 4px solid var(--arr); word-break: break-all; }
+@media (max-width: 900px) { .map-grid { grid-template-columns: 1fr; } .map-box { max-width: 560px; } }
+
 /* 관리자 비밀번호 입력 */
 .gate-wrap[hidden], #app[hidden] { display: none; }
 .gate-wrap { display: grid; place-items: center; min-height: calc(100vh - 65px - 180px); padding: 48px 16px; }
