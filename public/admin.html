@@ -7,6 +7,7 @@
 <script>(function(){try{var t=localStorage.getItem("hd-theme");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;var l=localStorage.getItem("hd-lang");if(l!=="ko"&&l!=="en")l=/^ko/i.test(navigator.language||"ko")?"ko":"en";document.documentElement.lang=l}catch(e){}})()</script>
 <title>홈드랍 관리자 화면</title>
 <meta name="description" content="홈드랍 예약 표와 배차 추천 보드(데모)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha256-tXCrvaljxgtN5LT/Syb5Mm9T+yzPFGH98JVcoJT7JTk=" crossorigin="anonymous">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body data-page="admin">
@@ -50,23 +51,18 @@
     <p class="ko" data-i18n="map.ko" style="font-size:26px">서울·경기 실시간 지도</p>
     <p class="desc" data-i18n="map.desc">ITS 실시간 교통정보로 서울과 경기도의 도로 혼잡을 보여 줘요.</p>
     <div class="map-grid">
-      <div class="map-box">
-        <div class="zoom-ctl" role="group" aria-label="지도 확대 축소">
-          <button type="button" id="zIn" aria-label="확대" data-i18n-attr="aria-label:map.zoomIn;title:map.zoomIn">+</button>
-          <button type="button" id="zOut" aria-label="축소" data-i18n-attr="aria-label:map.zoomOut;title:map.zoomOut">−</button>
-          <button type="button" id="zReset" aria-label="처음 크기" data-i18n-attr="aria-label:map.zoomReset;title:map.zoomReset">⟲</button>
-          <span class="zoom-lv" id="zLv">×1</span>
-        </div>
-        <canvas id="mapCv" role="img" aria-label="지도" data-i18n-attr="aria-label:map.canvas"></canvas></div>
+      <div class="map-box"><div id="mapEl" class="mapEl" role="region" aria-label="지도" data-i18n-attr="aria-label:map.canvas"></div></div>
       <aside class="map-side">
         <button type="button" class="pill" id="mapRefresh" data-i18n="map.refresh">새로고침</button>
         <p class="map-status" id="mapStatus" aria-live="polite"></p>
-        <p class="map-hint" data-i18n="map.hint">버튼으로 확대·축소하고, 끌어서 옮길 수 있어요.</p>
+        <p class="map-hint" data-i18n="map.hint">+/− 버튼이나 더블클릭으로 확대·축소하고, 끌어서 옮길 수 있어요.</p>
         <div class="legend" aria-label="범례" data-i18n-attr="aria-label:map.legend">
           <span><i style="background:var(--c1)"></i><b data-i18n="map.l1">원활</b></span>
           <span><i style="background:var(--c2)"></i><b data-i18n="map.l2">서행</b></span>
           <span><i style="background:var(--c3)"></i><b data-i18n="map.l3">지체</b></span>
           <span><i style="background:var(--c4)"></i><b data-i18n="map.l4">정체</b></span>
+          <span><i class="area" style="background:var(--seoul)"></i><b data-i18n="map.seoul">서울</b></span>
+          <span><i class="area" style="background:var(--gg)"></i><b data-i18n="map.gg">경기도</b></span>
           <span><i class="dot" style="background:var(--cta)"></i><b data-i18n="map.pick">예약 위치</b></span>
           <span><i class="dot sq" style="background:var(--red)"></i><b data-i18n="map.airport">인천공항</b></span>
         </div>
@@ -102,6 +98,7 @@
 </main>
 <footer><div class="wrap" data-i18n-html="adm.footer"><b>데모 데이터</b> 표시가 붙은 예약은 시연용으로 만든 가상 예약이에요. 로그인 없이 열리는 데모 화면이라 실제 운영에는 로그인이 필요해요.</div><div class="wrap"><a class="foot-link" href="/about" data-i18n="footer.about">홈드랍이란?</a> <a class="foot-link" href="/terms" data-i18n="footer.terms">이용약관</a> <a class="foot-link" href="/privacy" data-i18n="footer.privacy">개인정보처리방침</a> <a class="foot-link" href="/voice" data-i18n="footer.voice">고객의 소리</a></div></footer>
 <script src="/i18n.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha256-XJrs/DDkVkUZ29zdzFOkGCJ9zHVo5hnpdi3c7HYJ7Uc=" crossorigin="anonymous"></script>
 <script src="/admin.js"></script>
 <script src="/map.js"></script>
 </body>
