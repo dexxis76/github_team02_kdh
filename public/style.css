@@ -237,6 +237,22 @@ a { color: inherit; }
 
 footer { margin-top: 96px; background: var(--foot); color: #bbb; padding: 40px 0; font-size: 14px; }
 footer b { color: #fff; }
+.foot-link { display: inline-block; margin-top: 14px; padding: 6px 16px; border: 1px solid #777; border-radius: 100px; color: #fff; text-decoration: none; font-weight: 700; }
+.foot-link:hover { border-color: #fff; background: rgba(255, 255, 255, .1); }
+
+/* 이용약관 */
+.terms { max-width: 860px; padding: 48px 0 0; }
+.terms h1 { margin: 0; font-size: 44px; line-height: 1.2; }
+.terms .meta { color: var(--sub); font-size: 14px; margin: 8px 0 24px; }
+.terms .notice { background: var(--card); border-left: 4px solid var(--amber); border-radius: var(--r); padding: 16px 20px; margin-bottom: 28px; font-size: 15px; }
+.terms h2 { margin: 36px 0 8px; font-size: 22px; }
+.terms h3 { margin: 24px 0 0; font-size: 17px; color: var(--sub); }
+.terms ol, .terms ul { margin: 6px 0; padding-left: 22px; }
+.terms li { margin: 4px 0; }
+.terms .toc { background: var(--card); border-radius: var(--r); padding: 16px 20px 16px 40px; columns: 2; font-size: 14px; }
+.terms .back { display: inline-block; margin-top: 8px; color: var(--link); }
+html[lang="en"] .t-ko, html:not([lang="en"]) .t-en { display: none; }
+@media (max-width: 760px) { .terms h1 { font-size: 30px; } .terms .toc { columns: 1; } }
 
 /* 관리자 */
 .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 32px; }

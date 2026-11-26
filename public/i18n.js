@@ -13,6 +13,10 @@
     ko: {
       'title.index': '홈드랍 예약 챗봇',
       'title.admin': '홈드랍 관리자 화면',
+      'title.terms': '홈드랍 이용약관',
+      'meta.terms': '홈드랍 데모 서비스 이용약관',
+      'footer.terms': '이용약관',
+      'terms.back': '← 예약 챗봇으로 돌아가기',
       'meta.index': '집에서 캐리어를 수거해 인천국제공항까지 보내 주는 홈드랍을 대화로 예약하는 데모 서비스',
       'meta.admin': '홈드랍 예약 표와 배차 추천 보드(데모)',
       'logo': '홈드랍',
@@ -144,6 +148,10 @@
     en: {
       'title.index': 'Home Drop Booking Chatbot',
       'title.admin': 'Home Drop Admin',
+      'title.terms': 'Home Drop Terms of Use',
+      'meta.terms': 'Terms of Use for the Home Drop demo service',
+      'footer.terms': 'Terms of Use',
+      'terms.back': '← Back to booking chat',
       'meta.index': 'A demo service that lets you book Home Drop — luggage pickup from your home to Incheon International Airport — through chat',
       'meta.admin': 'Home Drop reservation table and dispatch recommendation board (demo)',
       'logo': 'Home Drop',
