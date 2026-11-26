@@ -50,10 +50,18 @@
     <p class="ko" data-i18n="map.ko" style="font-size:26px">서울·경기 실시간 지도</p>
     <p class="desc" data-i18n="map.desc">ITS 실시간 교통정보로 서울과 경기도의 도로 혼잡을 보여 줘요.</p>
     <div class="map-grid">
-      <div class="map-box"><canvas id="mapCv" role="img" aria-label="지도" data-i18n-attr="aria-label:map.canvas"></canvas></div>
+      <div class="map-box">
+        <div class="zoom-ctl" role="group" aria-label="지도 확대 축소">
+          <button type="button" id="zIn" aria-label="확대" data-i18n-attr="aria-label:map.zoomIn;title:map.zoomIn">+</button>
+          <button type="button" id="zOut" aria-label="축소" data-i18n-attr="aria-label:map.zoomOut;title:map.zoomOut">−</button>
+          <button type="button" id="zReset" aria-label="처음 크기" data-i18n-attr="aria-label:map.zoomReset;title:map.zoomReset">⟲</button>
+          <span class="zoom-lv" id="zLv">×1</span>
+        </div>
+        <canvas id="mapCv" role="img" aria-label="지도" data-i18n-attr="aria-label:map.canvas"></canvas></div>
       <aside class="map-side">
         <button type="button" class="pill" id="mapRefresh" data-i18n="map.refresh">새로고침</button>
         <p class="map-status" id="mapStatus" aria-live="polite"></p>
+        <p class="map-hint" data-i18n="map.hint">버튼으로 확대·축소하고, 끌어서 옮길 수 있어요.</p>
         <div class="legend" aria-label="범례" data-i18n-attr="aria-label:map.legend">
           <span><i style="background:var(--c1)"></i><b data-i18n="map.l1">원활</b></span>
           <span><i style="background:var(--c2)"></i><b data-i18n="map.l2">서행</b></span>
