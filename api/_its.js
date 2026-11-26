@@ -29,7 +29,7 @@ async function trafficInfo(bbox, ttl = 5 * 60e3) {
     cache = { ck, at: Date.now(), res };
     return res;
   } catch (e) {
-    return mark({ ok: false, reason: isTimeout(e) ? '시간 초과' : `연결 실패: ${String(e.message).replace(key(), '***')}` });
+    return mark({ ok: false, reason: isTimeout(e) ? '시간 초과' : `연결 실패: ${String(e.message).replace(key(), '***')}${e.cause && (e.cause.code || e.cause.message) ? ' (' + String(e.cause.code || e.cause.message).replace(key(), '***') + ')' : ''}` });
   }
 }
 function mark(res) { last.traffic = { ok: res.ok, reason: res.reason, ms: res.ms, at: new Date().toISOString() }; return res; }

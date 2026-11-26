@@ -1,10 +1,18 @@
 {
   "cleanUrls": true,
-  "rewrites": [{ "source": "/admin", "destination": "/admin.html" }],
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    }
+  ],
   "functions": {
     "api/**": {
       "maxDuration": 60,
       "includeFiles": "docs/답변참고문서/청킹/**"
     }
-  }
+  },
+  "regions": [
+    "icn1"
+  ]
 }
