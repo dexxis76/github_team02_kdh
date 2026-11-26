@@ -76,8 +76,9 @@ function render() {
       <p><b>${esc(v.pickupDate)}</b> · ${esc(v.slot)}</p>
       <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="${v.max}" aria-valuenow="${v.bags}" aria-label="${esc(t('veh.bagsLabel', { b: v.bags, m: v.max }))}"><i style="width:${Math.min(100, Math.round(v.bags / v.max * 100))}%;${v.over ? 'background:var(--red)' : ''}"></i></div>
       <p>${t('veh.count', { b: v.bags, m: v.max, n: v.tags.length })}${v.over ? ` · <b class="bad">${esc(t('veh.over'))}</b>` : ''}</p>
-      <ol class="stops">${v.stops.map(st => `<li><b>${st.n}</b> ${esc(st.district)} <small>${esc(st.tag)} · ${esc(t('veh.far', { k: st.km }))}</small></li>`).join('')}</ol>
+      <ol class="stops">${v.stops.map(st => `<li><b>${st.n}</b> ${esc(st.district)} <small>${esc(st.tag)} · ${esc(t('veh.far', { k: st.km }))}</small>${st.moved ? ` <span class="moved" title="${esc(t('veh.movedHint', { n: st.home }))}">${esc(t('veh.moved', { n: st.home }))}</span>` : ''}</li>`).join('')}</ol>
       <p class="muted">${esc(t('veh.order'))}</p>
+      <p class="muted">${esc(t('veh.load', { n: v.load }))}</p>
       <div class="row"><span class="st ${stClass(v.statuses[v.statuses.length - 1])}">${esc(v.statuses.map(stName).join(' / '))}</span>
       <button class="mini" data-v="${esc(v.id)}" ${pend ? '' : 'disabled'}>${t('veh.setDispatched')}</button></div></article>`;
   }).join('') : `<div class="empty" style="grid-column:1/-1">${t('veh.empty')}</div>`;
@@ -88,7 +89,7 @@ function render() {
     const idx = STATUS.indexOf(i.status), next = STATUS[idx + 1];
     return `<tr><td class="tagc">${esc(i.tag)}${i.demo ? `<span class="demo-tag">${t('row.demoData')}</span>` : ''}</td>
       <td>${esc(i.name)}<br><small style="color:var(--mute)">${esc(i.phone)}</small></td>
-      <td>${esc(i.district)} <small style="color:var(--mute)">${i.car ? esc(t('car.label', { n: i.car })) : esc(t('car.none'))}</small></td>
+      <td>${esc(i.district)} <small style="color:var(--mute)">${i.car ? esc(t('car.label', { n: i.car })) : esc(t('car.none'))}${i.moved ? ' ' + esc(t('veh.moved', { n: i.homeCar })) : ''}</small></td>
       <td>${esc(i.pickupDate)}<br><small style="color:var(--mute)">${esc(t('row.wish', { h: hh(i.pickupHour) }))}</small></td>
       <td>${esc(i.flightId)}<br><small style="color:var(--mute)">${esc(i.flightDate)} ${esc(i.depTime)} · ${esc(i.terminal)}</small></td>
       <td>${t('unit.bags', { n: i.bags })}${i.large ? ` <small style="color:var(--mute)">${esc(t('row.large', { n: i.large }))}</small>` : ''}</td>
