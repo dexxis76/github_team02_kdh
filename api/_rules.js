@@ -14,8 +14,23 @@ const REGIONS = {
 };
 const DISTRICTS = Object.entries(REGIONS).flatMap(([region, list]) => list.map(d => [d, region]));
 
-function findDistrict(address) {
-  const a = String(address || '');
+// 경기도 31개 시·군 → 4개 생활권역 (데모 값). 시·군 이름(시/군 포함)을 district 로 쓴다
+const GG_REGIONS = {
+  경기북부: ['고양시', '파주시', '의정부시', '양주시', '동두천시', '포천시', '연천군', '가평군'],
+  경기동부: ['구리시', '남양주시', '하남시', '광주시', '양평군', '여주시', '이천시'],
+  경기남부: ['수원시', '성남시', '용인시', '오산시', '화성시', '평택시', '안성시'],
+  경기서부: ['부천시', '광명시', '시흥시', '안산시', '군포시', '의왕시', '과천시', '안양시', '김포시'],
+};
+const GG_CITIES = Object.entries(GG_REGIONS).flatMap(([region, list]) => list.map(d => [d, region]));
+const OTHER_AREA = /(인천|부산|대구|대전|광주광역|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주)/;
+
+function findGyeonggi(a) {
+  const hasGG = /경기/.test(a);
+  for (const [d, region] of GG_CITIES) if (a.includes(d)) return { district: d, region };
+  if (hasGG) for (const [d, region] of GG_CITIES) { const bare = d.slice(0, -1); if (a.includes(bare)) return { district: d, region }; }
+  return null;
+}
+function findSeoul(a) {
   for (const [d, region] of DISTRICTS) if (a.includes(d)) return { district: d, region };
   for (const [d, region] of DISTRICTS) {
     const bare = d.slice(0, -1);
@@ -23,7 +38,16 @@ function findDistrict(address) {
   }
   return null;
 }
-const OUT_OF_SEOUL = /(경기|인천|부산|대구|대전|광주|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주|수원|성남|고양|부천|안양)/;
+// 서울 구 또는 경기도 시·군을 찾는다. 인천·부산 같은 다른 지역 주소는 구 이름이 같아도(예: 인천 중구) 받지 않는다
+function findDistrict(address) {
+  const a = String(address || '');
+  const seoul = /서울/.test(a), gg = /경기/.test(a);
+  if (OTHER_AREA.test(a) && !seoul && !gg) return null;
+  if (seoul) return findSeoul(a) || findGyeonggi(a);
+  return findGyeonggi(a) || findSeoul(a);
+}
+// 서비스 지역 밖 안내용 (서울·경기 밖의 지역 이름)
+const OUT_OF_AREA = OTHER_AREA;
 
 function price(bags, large = 0) {
   if (!bags || bags < 1) return 0;
@@ -83,7 +107,7 @@ const PROHIBITED = [
 ];
 
 module.exports = {
-  MAX_BAGS_PER_BOOKING, MAX_BAGS_PER_VEHICLE, REGIONS, findDistrict, OUT_OF_SEOUL, price, PRICE_TABLE,
+  MAX_BAGS_PER_BOOKING, MAX_BAGS_PER_VEHICLE, REGIONS, GG_REGIONS, findDistrict, OUT_OF_AREA, price, PRICE_TABLE,
   TERMINAL_HOURS, inServiceHours, checkFlightDate, bookableRange, slotStart, slotLabel, pickupOk, hourLabel,
   US_AIRPORTS, STATUS, PROHIBITED, BUS_MIN_PARTY, BUS_FARE, BUS_RATE, BUS_RATE_NOTE, MAX_PARTY, BUS_RETURN_DAYS, busEligible, voucherFor,
 };

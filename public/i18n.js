@@ -297,6 +297,7 @@
     '언제 수거하러 오나요?': 'When do you pick up?',
     '김가상 010-0000-0000': 'Gim Gasang 010-0000-0000',
     '서울 강남구 테헤란로 1': 'Seoul, Gangnam-gu, Teheran-ro 1',
+    '경기 성남시 분당구 판교역로 1': 'Gyeonggi, Seongnam-si, Bundang-gu, Pangyoyeok-ro 1',
     '아니요, 미주 노선이 아니에요': 'No, not an Americas route',
     '네, 미주 노선이에요': 'Yes, Americas route',
     '네, 마쳤어요': 'Yes, done',
