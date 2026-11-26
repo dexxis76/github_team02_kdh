@@ -4,7 +4,8 @@ const msgs = $('#msgs'), quick = $('#quick'), input = $('#input'), sendBtn = $('
 let state = null, history = [], busy = false;
 try { const saved = JSON.parse(sessionStorage.getItem('hd-chat') || 'null'); if (saved) { state = saved.state; history = saved.history || []; } } catch { /* 저장소를 못 쓰면 새로 시작 */ }
 
-const STEPS = ['말 걸기', '고객 정보', '항공편', '사전 확인', '짐', '수거 시각', '예약 확인'];
+const STEPS = () => [0, 1, 2, 3, 4, 5, 6].map(n => t('step.' + n));
+const I = window.i18n;
 function stepIndex() {
   const s = (state && state.slots) || {};
   if (state && state.step === 'done') return 7;
@@ -18,38 +19,38 @@ function stepIndex() {
 }
 function renderSteps() {
   const i = stepIndex();
-  $('#steps').innerHTML = STEPS.map((t, n) => `<li class="${n < i ? 'done' : n === i ? 'now' : ''}"><i>${n < i ? '✓' : n + 1}</i>${t}</li>`).join('');
+  $('#steps').innerHTML = STEPS().map((label, n) => `<li class="${n < i ? 'done' : n === i ? 'now' : ''}"><i>${n < i ? '✓' : n + 1}</i>${esc(label)}</li>`).join('');
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 function chipsFor(m) {
   const out = [];
-  (m.sources || []).forEach(n => out.push(`<span class="chip src">근거: ${esc(n)}</span>`));
+  (m.sources || []).forEach(n => out.push(`<span class="chip src">${esc(t('chip.src', { n: I.srv(n) }))}</span>`));
   const meta = m.meta || {};
   if (meta.ai && meta.ai.provider) out.push(`<span class="chip live" title="${esc((meta.ai.tried || []).map(t => t.provider + ': ' + (t.ok ? '성공' : t.reason)).join(' → '))}">AI: ${esc(meta.ai.provider)}${meta.ai.model ? ' · ' + esc(meta.ai.model) : ''}</span>`);
-  else if (meta.mode === '규칙 기반') out.push(`<span class="chip demo" title="${esc(((meta.ai || {}).tried || []).map(t => t.provider + ': ' + t.reason).join(' / '))}">규칙 기반 모드 · AI 연결 안 됨</span>`);
-  if (meta.flight) out.push(meta.flight.status === '실시간' ? '<span class="chip live">항공편: 실시간</span>' : `<span class="chip demo">항공편: 시연 값 (${esc(meta.flight.reason || '')})</span>`);
-  if (meta.congestion) out.push(`<span class="chip ${meta.congestion === '실시간' ? 'live' : 'demo'}">혼잡: ${esc(meta.congestion)}</span>`);
+  else if (meta.mode === '규칙 기반') out.push(`<span class="chip demo" title="${esc(((meta.ai || {}).tried || []).map(t => t.provider + ': ' + t.reason).join(' / '))}">${esc(t('chip.rule'))}</span>`);
+  if (meta.flight) out.push(meta.flight.status === '실시간' ? `<span class="chip live">${esc(t('chip.flightLive'))}</span>` : `<span class="chip demo">${esc(t('chip.flightDemo', { r: meta.flight.reason || '' }))}</span>`);
+  if (meta.congestion) out.push(`<span class="chip ${meta.congestion === '실시간' ? 'live' : 'demo'}">${esc(t('chip.cong', { v: I.srv(meta.congestion) }))}</span>`);
   return out.length ? `<div class="chips">${out.join('')}</div>` : '';
 }
 function resCard(r) {
   if (!r) return '';
   return `<div class="rcard"><div class="tag">${esc(r.tag)}</div><dl>
-    <dt>예약자</dt><dd>${esc(r.name)} · ${esc(r.phone)}</dd>
-    <dt>수거</dt><dd>${esc(r.pickupDate)} ${String(r.pickupHour).padStart(2, '0')}시 희망 · ${esc(r.district)}</dd>
-    <dt>항공편</dt><dd>${esc(r.flightId)} · ${esc(r.flightDate)} ${esc(r.depTime)} · ${esc(r.terminal)}</dd>
-    <dt>짐 / 요금</dt><dd>캐리어 ${r.bags}개(대형 ${r.large}개) · ${Number(r.price).toLocaleString('ko-KR')}원 (데모 값)</dd>
-    <dt>동반 인원</dt><dd>${r.party}명</dd></dl></div>${voucherCard(r.voucher)}`;
+    <dt>${t('res.name')}</dt><dd>${esc(r.name)} · ${esc(r.phone)}</dd>
+    <dt>${t('res.pickup')}</dt><dd>${esc(t('res.pickupV', { date: r.pickupDate, h: String(r.pickupHour).padStart(2, '0'), d: r.district }))}</dd>
+    <dt>${t('res.flight')}</dt><dd>${esc(r.flightId)} · ${esc(r.flightDate)} ${esc(r.depTime)} · ${esc(r.terminal)}</dd>
+    <dt>${t('res.bags')}</dt><dd>${esc(t('res.bagsV', { b: r.bags, l: r.large, p: I.won(r.price) }))}</dd>
+    <dt>${t('res.party')}</dt><dd>${esc(t('res.partyV', { n: r.party }))}</dd></dl></div>${voucherCard(r.voucher)}`;
 }
 function voucherCard(v) {
   if (!v) return '';
-  const w = n => Number(n).toLocaleString('ko-KR') + '원';
-  return `<div class="ticket" aria-label="공항버스 가족 할인권">
-    <div class="ticket-main"><small>공항버스 가족 할인권 <em>데모 값</em></small>
+  const round = v.trips === 2;
+  return `<div class="ticket" aria-label="${esc(t('voucher.label'))}">
+    <div class="ticket-main"><small>${t('voucher.label')} <em>${t('voucher.demo')}</em></small>
       <b>${esc(v.code)}</b>
-      <span>${v.trips === 2 ? `왕복 공항버스 · 가는 길 ${esc(v.validDate)} 당일 · 오는 길 ${esc(v.returnUntil)}까지` : `${esc(v.route)} · ${esc(v.validDate)} 출발일 당일`}</span></div>
-    <div class="ticket-side"><strong>${v.rate}%</strong><span>${v.trips === 2 ? '왕복 ' : ''}1인 ${w(v.fare)} → ${w(v.discounted)}</span><span>${v.party}명 사용 · ${w(v.saving)} 절약</span></div></div>`;
+      <span>${esc(round ? t('voucher.round', { d: v.validDate, r: v.returnUntil }) : t('voucher.one', { route: v.route, d: v.validDate }))}</span></div>
+    <div class="ticket-side"><strong>${v.rate}%</strong><span>${esc(t('voucher.fare', { round: round ? t('voucher.round1') : '', a: I.won(v.fare), b: I.won(v.discounted) }))}</span><span>${esc(t('voucher.use', { n: v.party, s: I.won(v.saving) }))}</span></div></div>`;
 }
 function add(role, text, m) {
   const d = document.createElement('div');
@@ -59,45 +60,50 @@ function add(role, text, m) {
   msgs.scrollTop = msgs.scrollHeight;
   return d;
 }
+let quickList = [];
+// 화면에는 현재 언어로 보여 주고, 서버에는 원래 한국어 문장을 보낸다
 function setQuick(list) {
+  quickList = list || [];
   quick.innerHTML = '';
-  (list || []).forEach(q => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.textContent = q; b.onclick = () => send(q); quick.appendChild(b); });
+  quickList.forEach(q => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.textContent = I.quickLabel(q); b.onclick = () => send(q, I.quickLabel(q)); quick.appendChild(b); });
 }
+let lastMeta = null;
 function setMode(meta) {
   const el = $('#mode');
   if (!meta) return;
-  if (meta.mode === 'AI' && meta.ai && meta.ai.provider) { el.textContent = `AI · ${meta.ai.provider}`; el.className = 'mode-chip ai'; }
-  else { el.textContent = '규칙 기반 모드'; el.className = 'mode-chip rule'; }
+  lastMeta = meta;
+  el.removeAttribute('data-i18n');
+  if (meta.mode === 'AI' && meta.ai && meta.ai.provider) { el.textContent = t('mode.ai', { p: meta.ai.provider }); el.className = 'mode-chip ai'; }
+  else { el.textContent = t('mode.rule'); el.className = 'mode-chip rule'; }
 }
 function persist() { try { sessionStorage.setItem('hd-chat', JSON.stringify({ state, history: history.slice(-12) })); } catch { /* 무시 */ } }
 
-async function send(text) {
+async function send(text, shown) {
   text = String(text || '').trim();
   if (!text || busy) return;
   busy = true; sendBtn.disabled = true; input.value = ''; setQuick([]);
-  add('user', text);
-  const typing = add('bot', '답을 쓰고 있어요…'); typing.classList.add('typing');
+  add('user', shown || text);
+  const typing = add('bot', t('typing')); typing.classList.add('typing');
   try {
-    const r = await fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: text, state, history: history.slice(-6) }) });
+    const r = await fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: text, state, history: history.slice(-6), lang: I.lang }) });
     const j = await r.json();
     typing.remove();
-    if (!r.ok) throw new Error(j.error || '서버 오류');
+    if (!r.ok) throw new Error(j.error || t('err.server'));
     state = j.state; history.push({ role: 'user', text }, { role: 'bot', text: j.reply });
     add('bot', j.reply, j); setQuick(j.quick); setMode(j.meta); persist(); renderSteps();
   } catch (e) {
     typing.remove();
-    add('bot', `답을 받지 못했어요. ${e.message}\n잠시 뒤 다시 보내 주세요.`);
+    add('bot', t('err.noReply', { msg: e.message }));
     setQuick(['다시 시도']);
   }
   busy = false; sendBtn.disabled = false; input.focus();
 }
 
 $('#form').addEventListener('submit', e => { e.preventDefault(); send(input.value); });
-document.querySelectorAll('.svc').forEach(b => b.addEventListener('click', () => { document.getElementById('chat').scrollIntoView(); send(b.dataset.q); }));
+document.querySelectorAll('.svc').forEach(b => b.addEventListener('click', () => { document.getElementById('chat').scrollIntoView(); send(b.dataset.q, I.quickLabel(b.dataset.q)); }));
 
 // 첫 화면: 저장된 대화가 있으면 이어서, 없으면 인사
-const GREET = '안녕하세요! 홈드랍 예약·안내 챗봇이에요. 집에서 캐리어를 수거해 공항까지 보내 드려요(데모). 「짐 맡기고 싶어요」라고 말하면 예약을 시작해요. 요금·금지 물품·수거 시간도 물어보세요.';
-add('bot', GREET);
+const greetEl = add('bot', t('greet'));
 if (history.length) {
   history.forEach(h => add(h.role === 'user' ? 'user' : 'bot', h.text));
   setQuick(state && state.step === 'done' ? ['새 예약'] : []);
@@ -109,21 +115,25 @@ renderSteps();
 // ---- 혼잡 시간대 (승객예고 API, 실패하면 시연 값)
 let term = 't1', day = 0, rows = [];
 async function loadTraffic() {
-  $('#trafficNote').textContent = '불러오는 중…';
+  tInfo = null; tFail = false; drawNote();
   try {
     const j = await (await fetch('/api/congestion?day=' + day)).json();
-    rows = j.rows;
-    $('#trafficNote').innerHTML = j.source === '실시간'
-      ? `출처: 인천국제공항공사 승객예고 API · <b class="ok">실시간</b> 예상치(${esc(j.date || '')}). 실측이 아니에요.`
-      : `승객예고 API를 쓸 수 없어요(<b class="bad">${esc(j.reason)}</b>). 아래는 <b>시연 값</b>이에요.`;
-    drawBars();
-  } catch { $('#trafficNote').textContent = '혼잡 정보를 불러오지 못했어요.'; }
+    rows = j.rows; tInfo = { live: j.source === '실시간', date: j.date || '', reason: j.reason || '' };
+    drawNote(); drawBars();
+  } catch { tFail = true; drawNote(); }
+}
+let tInfo = null, tFail = false;
+function drawNote() {
+  const el = $('#trafficNote');
+  if (tFail) el.textContent = t('traffic.fail');
+  else if (!tInfo) el.textContent = t('traffic.loading');
+  else el.innerHTML = tInfo.live ? t('traffic.live', { date: esc(tInfo.date) }) : t('traffic.demo', { reason: esc(tInfo.reason) });
 }
 function drawBars() {
   const vals = Array.from({ length: 24 }, (_, h) => (rows.find(r => r.hour === h) || {})[term] || 0);
   const max = Math.max(...vals, 1);
   const top = [...vals.keys()].sort((a, b) => vals[b] - vals[a]).slice(0, 3);
-  $('#bars').innerHTML = vals.map((v, h) => `<div class="bar ${top.includes(h) && v ? 'peak' : ''}" title="${h}~${h + 1}시 ${v.toLocaleString('ko-KR')}명"><em>${top.includes(h) && v ? v.toLocaleString('ko-KR') : ''}</em><i style="height:${Math.max(1, Math.round(v / max * 200))}px"></i></div>`).join('');
+  $('#bars').innerHTML = vals.map((v, h) => `<div class="bar ${top.includes(h) && v ? 'peak' : ''}" title="${esc(t('traffic.bar', { h, h2: h + 1, n: I.num(v) }))}"><em>${top.includes(h) && v ? I.num(v) : ''}</em><i style="height:${Math.max(1, Math.round(v / max * 200))}px"></i></div>`).join('');
   $('#axis').innerHTML = vals.map((_, h) => `<span>${h}</span>`).join('');
 }
 $('#tb').addEventListener('click', e => {
@@ -134,3 +144,12 @@ $('#tb').addEventListener('click', e => {
   if (b.dataset.d) loadTraffic(); else drawBars();
 });
 loadTraffic();
+
+// ---- 언어를 바꾸면 화면에 남아 있는 글자를 다시 그린다 (이미 받은 서버 답변은 그대로 둔다)
+window.addEventListener('langchange', () => {
+  const greetBubble = greetEl.querySelector('.bubble'); if (greetBubble) greetBubble.textContent = t('greet');
+  setQuick(quickList);
+  renderSteps();
+  if (lastMeta) setMode(lastMeta);
+  drawNote(); if (rows.length) drawBars();
+});

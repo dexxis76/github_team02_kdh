@@ -96,7 +96,7 @@ function promptFor(g, s) {
 
 // ---- AI 에게 맡기는 일: 말 → 항목, 질문 → 답
 const SCHEMA_HELP = `{"intent":"book|ask|yes|no|other","updates":{...},"answer":null,"sources":[]}`;
-function buildSystem(s, group) {
+function buildSystem(s, group, lang) {
   return [
     '너는 「홈드랍 예약·안내 챗봇」의 말 이해 담당이다. 반드시 JSON 객체 하나만 출력한다. 설명·코드블록 금지.',
     `형식: ${SCHEMA_HELP}`,
@@ -107,8 +107,9 @@ function buildSystem(s, group) {
     'answer: 사용자가 질문했을 때만 한국어 존댓말로 2~4문장. 아래 [참고 자료]와 [실시간 값] 안의 내용만 쓴다. 없으면 「확인 필요」라고 하고 문의처를 안내한다: ' + CONTACT + '.',
     `요금은 직접 계산하지 말고 [요금] 항목의 값만 쓴다. 홈드랍 데모 요금만 답하고, 이지드랍 요금은 사용자가 이지드랍을 물었을 때만 답한다. ${DEMO_DOC} 의 값에는 「데모 값」이라고 밝힌다. 이지드랍과 홈드랍은 다른 서비스이니 어느 쪽 이야기인지 밝힌다.`,
     '예약 변경·취소·환불, 결제 방법, 분실·파손 책임, 다른 항공사 규정은 자료에 없으면 「확인 필요」로 답한다. 이용 자격을 단정해서 판정하지 않는다.',
+    lang === 'en' ? 'answer 는 반드시 영어로 쓴다(Write the answer field in English). 요금·시간 같은 숫자는 그대로 쓰고, 「데모 값」은 "demo value" 로 옮긴다. sources 의 이름은 한국어 원문 그대로 둔다.' : '',
     'sources: answer 에 쓴 근거 이름만. 참고 자료의 name 그대로, 또는 「여객편 주간 운항 현황 API」「승객예고 API」. 답이 없으면 빈 배열.',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function buildUser(text, s, group, history, docs, extra) {
@@ -317,7 +318,7 @@ module.exports = async function handler(req, res) {
 
   // 1) AI 로 이해하기 → 2) 안 되면 규칙 기반
   let u;
-  const ai = await askAI(buildSystem(s, group0), buildUser(text, s, group0, history, docs, extra), parseJSON);
+  const ai = await askAI(buildSystem(s, group0, body.lang === 'en' ? 'en' : 'ko'), buildUser(text, s, group0, history, docs, extra), parseJSON);
   if (ai.ok) { u = ai.data; meta.ai = { provider: ai.provider, model: ai.model, tried: ai.tried }; }
   else {
     meta.mode = '규칙 기반'; meta.ai = { provider: null, tried: ai.tried };
