@@ -6,6 +6,8 @@
   const ctx = cv.getContext('2d');
   const statusEl = document.getElementById('mapStatus'), logEl = document.getElementById('routeLog');
   const T = k => window.t(k), TV = (k, v) => window.t(k, v);
+  const view = { s: 1, x: 0, y: 0 }; // 확대 배율과 이동량(픽셀)
+  const MIN = 1, MAX = 8;
   let base = null, traffic = null, trafficErr = null, timer = null, loading = false;
 
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || '#888';
@@ -13,7 +15,24 @@
 
   function proj(lon, lat, W, H) {
     const b = base.bbox;
-    return [(lon - b.minLon) / (b.maxLon - b.minLon) * W, (1 - (lat - b.minLat) / (b.maxLat - b.minLat)) * H];
+    const x = (lon - b.minLon) / (b.maxLon - b.minLon) * W, y = (1 - (lat - b.minLat) / (b.maxLat - b.minLat)) * H;
+    return [(x - W / 2) * view.s + W / 2 + view.x, (y - H / 2) * view.s + H / 2 + view.y];
+  }
+  // 지도가 화면 밖으로 너무 나가지 않게 이동 범위를 막는다
+  function clamp() {
+    const W = cv.clientWidth, H = cv.clientHeight, mx = W * (view.s - 1) / 2, my = H * (view.s - 1) / 2;
+    view.x = Math.max(-mx, Math.min(mx, view.x)); view.y = Math.max(-my, Math.min(my, view.y));
+  }
+  // (cx, cy) 지점이 그대로 있도록 배율을 바꾼다
+  function zoomTo(ns, cx, cy) {
+    ns = Math.max(MIN, Math.min(MAX, ns));
+    const W = cv.clientWidth, H = cv.clientHeight, k = ns / view.s;
+    view.x = (cx - W / 2) - ((cx - W / 2) - view.x) * k; view.y = (cy - H / 2) - ((cy - H / 2) - view.y) * k;
+    view.s = ns; clamp(); syncZoom(); draw();
+  }
+  function syncZoom() {
+    document.getElementById('zLv').textContent = '×' + (Math.round(view.s * 10) / 10);
+    document.getElementById('zIn').disabled = view.s >= MAX; document.getElementById('zOut').disabled = view.s <= MIN;
   }
 
   function draw() {
@@ -27,7 +46,7 @@
 
     // 교통 선
     if (traffic && traffic.lines && traffic.lines.length) {
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.min(2.2 + (view.s - 1) * .5, 5);
       for (const lv of [0, 1, 2, 3, 4]) {
         ctx.strokeStyle = css(LV[lv]); ctx.beginPath();
         for (const l of traffic.lines) {
@@ -108,7 +127,19 @@
     } else draw();
   });
   document.getElementById('mapRefresh').addEventListener('click', loadTraffic);
-  window.addEventListener('resize', draw);
+  const W = () => cv.clientWidth, H = () => cv.clientHeight;
+  document.getElementById('zIn').addEventListener('click', () => zoomTo(view.s * 1.6, W() / 2, H() / 2));
+  document.getElementById('zOut').addEventListener('click', () => zoomTo(view.s / 1.6, W() / 2, H() / 2));
+  document.getElementById('zReset').addEventListener('click', () => { view.s = 1; view.x = 0; view.y = 0; syncZoom(); draw(); });
+  cv.addEventListener('wheel', e => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); const r = cv.getBoundingClientRect(); zoomTo(view.s * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  cv.addEventListener('dblclick', e => { const r = cv.getBoundingClientRect(); zoomTo(view.s * 1.6, e.clientX - r.left, e.clientY - r.top); });
+  let drag = null;
+  cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); });
+  cv.addEventListener('pointermove', e => { if (!drag) return; view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; clamp(); draw(); });
+  const end = () => { drag = null; cv.classList.remove('drag'); };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  window.addEventListener('resize', () => { clamp(); draw(); });
+  syncZoom();
   window.addEventListener('themechange', draw);
   window.addEventListener('langchange', () => { renderStatus(); draw(); });
   renderStatus();
