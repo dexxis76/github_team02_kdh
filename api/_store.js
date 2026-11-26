@@ -63,12 +63,13 @@ function setStatus(tag, status) {
 // 배차 추천: 차량은 4대(1~4호차) 고정이고, 수거지(구·시·군)가 속한 호차(기본 구역, _zones.js)가 먼저 맡는다.
 // 공평하게 나누기: 같은 수거일 × 2시간 시간대 안에서 한 호차에 일이 쏠리면, 가장 바쁜 호차의 예약 중 이웃 호차 구역에 가까운 것을
 // 가장 한가한 호차로 넘긴다. 일이 비슷해지거나 더 줄일 수 없을 때까지 반복한다(적재 40개 초과도 우선 해소).
+// 일이 적을 때는 나누지 않는다(차량을 불필요하게 늘리면 효율이 떨어지므로): 호차의 캐리어가 20개를 넘을 때만 넘긴다.
 //   작업량 = 캐리어 수 + 방문지당 3 + 공항까지 직선거리 10km당 1 (데모 값)
 // 방문 순서: 공항에서 먼 곳 → 가까운 곳(직선거리 기준). 실시간 교통·사고는 아직 반영하지 않는다.
 const { zoneOf, ZONES } = require('./_zones');
 const { CENTERS, AIRPORT } = require('./_geo');
 
-const STOP_COST = 3, KM_PER_UNIT = 10, GAP = 12, NEAR_KM = 25;
+const STOP_COST = 3, KM_PER_UNIT = 10, GAP = 12, NEAR_KM = 25, BUSY_BAGS = 20; // 한 호차가 캐리어 20개(적재 한도의 절반)를 넘어야 바쁜 것으로 본다
 const km = (a, b) => {
   const rad = x => x * Math.PI / 180, dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
@@ -96,6 +97,7 @@ function balance(rs) {
     let best = null;
     for (const from of cars) {
       if (n[from] < 2) continue; // 한 곳뿐이면 넘기지 않는다
+      if (bags[from] <= BUSY_BAGS && bags[from] <= R.MAX_BAGS_PER_VEHICLE) continue; // 아직 바쁘지 않으면 그대로 둔다
       for (const to of cars) {
         if (to === from) continue;
         const gap = load[from] - load[to];
