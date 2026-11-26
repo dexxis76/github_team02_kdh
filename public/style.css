@@ -241,18 +241,10 @@ footer b { color: #fff; }
 .foot-link:hover { border-color: #fff; background: rgba(255, 255, 255, .1); }
 
 /* 관리자 지도 */
-:root { --c1: #2fbf71; --c2: #f0a020; --c3: #e5484d; --c4: #8f1d2c; --c0: #9aa0aa; }
+:root { --seoul: #3b82f6; --gg: #14b8a6; --c1: #2fbf71; --c2: #f0a020; --c3: #e5484d; --c4: #8f1d2c; --c0: #9aa0aa; }
 :root[data-theme="dark"] { --c1: #3ddc84; --c2: #ffb340; --c3: #ff6b6b; --c4: #d63a5a; --c0: #5d6572; }
-.map-grid { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 24px; margin-top: 20px; align-items: start; }
+.map-grid { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 1fr); gap: 24px; margin-top: 20px; align-items: start; }
 .map-box { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
-.map-box canvas { display: block; width: 100%; height: auto; aspect-ratio: 100 / 117; border-radius: 4px; }
-.map-box canvas { touch-action: none; cursor: grab; }
-.map-box canvas.drag { cursor: grabbing; }
-.zoom-ctl { position: absolute; top: 16px; right: 16px; z-index: 2; display: grid; gap: 6px; justify-items: center; }
-.zoom-ctl button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line2); background: var(--surface); color: var(--ink); font-size: 22px; line-height: 1; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); display: grid; place-items: center; padding: 0; }
-.zoom-ctl button:hover { border-color: var(--cta); color: var(--cta); }
-.zoom-ctl button[disabled] { opacity: .4; cursor: default; }
-.zoom-lv { font-size: 12px; font-weight: 700; color: var(--sub); background: var(--surface); border-radius: 100px; padding: 0 8px; }
 .map-hint { margin: 0; color: var(--mute); font-size: 13px; }
 .map-side { display: grid; gap: 14px; }
 .map-side .pill { justify-self: start; }
@@ -261,13 +253,14 @@ footer b { color: #fff; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 22px; height: 6px; border-radius: 3px; display: inline-block; }
+.legend i.area { width: 22px; height: 12px; border-radius: 3px; opacity: .55; }
 .legend i.dot { width: 12px; height: 12px; border-radius: 50%; }
 .legend i.dot.sq { border-radius: 2px; }
 .legend i.ln { height: 4px; width: 24px; }
 .legend b { font-weight: 500; }
 .route-log { display: grid; gap: 8px; font-size: 14px; }
 .route-log p { margin: 0; padding: 10px 14px; background: var(--card); border-radius: var(--r); border-left: 4px solid var(--arr); word-break: break-all; }
-@media (max-width: 900px) { .map-grid { grid-template-columns: 1fr; } .map-box { max-width: 560px; } }
+@media (max-width: 900px) { .map-grid { grid-template-columns: 1fr; } }
 
 /* 관리자 비밀번호 입력 */
 .gate-wrap[hidden], #app[hidden] { display: none; }
@@ -377,3 +370,20 @@ tr:last-child td { border-bottom: 0; }
   .sec { scroll-margin-top: 100px; }
 }
 @media (prefers-reduced-motion: reduce) { html, .msgs { scroll-behavior: auto; } }
+
+/* Leaflet 지도 */
+.map-box { padding: 6px; }
+.mapEl { width: 100%; height: min(680px, 78vh); min-height: 420px; border-radius: 4px; background: var(--surface); z-index: 0; }
+.mapEl .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 22px; }
+:root[data-theme="dark"] .mapEl .leaflet-control-zoom a, :root[data-theme="dark"] .mapEl .leaflet-bar a { background: var(--surface); color: var(--ink); border-color: var(--line2); }
+:root[data-theme="dark"] .leaflet-container { background: #0e1116; }
+:root[data-theme="dark"] .leaflet-control-attribution { background: rgba(18, 21, 27, .8); color: var(--sub); }
+:root[data-theme="dark"] .leaflet-control-attribution a { color: var(--link); }
+.mapEl .leaflet-control-fit a { font-size: 18px; }
+.rsv-pin { background: var(--cta); color: #fff; border: 2px solid #fff; border-radius: 50%; display: grid; place-items: center; font: 700 12px Pretendard, sans-serif; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.apt-pin { background: var(--red); border: 2px solid #fff; border-radius: 3px; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.area-label { background: transparent; border: 0; box-shadow: none; color: #1f2933; font: 700 11px Pretendard, sans-serif; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; padding: 0; }
+.area-label::before { display: none; }
+:root[data-theme="dark"] .area-label { color: #e8eaed; text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 3px #000; }
+.mapEl.nolabel .area-label { display: none; }
+.mapEl.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.7); }

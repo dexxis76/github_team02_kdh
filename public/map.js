@@ -1,97 +1,100 @@
-// 관리자 지도: 서울·경기 구·시·군 위치 + 예약 위치 + ITS 실시간 교통소통정보
-// 배경 지도는 쓰지 않고(키가 브라우저에 나가지 않게), 좌표를 직접 그린다. admin.js 의 api() · data 를 쓴다.
+// 관리자 지도: 실제 지도(OpenStreetMap 계열 타일) 위에 서울 25개 구 · 경기 31개 시·군 경계, 예약 위치, 인천공항, ITS 실시간 도로 구간을 그린다.
+// 지도 라이브러리: Leaflet. 타일은 키가 필요 없는 공개 타일을 쓰고, ITS 키는 서버에만 있다. admin.js 의 api() · data 를 쓴다.
 (() => {
-  const cv = document.getElementById('mapCv');
-  if (!cv) return;
-  const ctx = cv.getContext('2d');
+  const el = document.getElementById('mapEl');
+  if (!el || typeof L === 'undefined') { const s = document.getElementById('mapStatus'); if (s) s.textContent = '지도를 불러오지 못했어요.'; return; }
   const statusEl = document.getElementById('mapStatus'), logEl = document.getElementById('routeLog');
   const T = k => window.t(k), TV = (k, v) => window.t(k, v);
-  const view = { s: 1, x: 0, y: 0 }; // 확대 배율과 이동량(픽셀)
-  const MIN = 1, MAX = 8;
-  let base = null, traffic = null, trafficErr = null, timer = null, loading = false;
-
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || '#888';
   const LV = ['--c0', '--c1', '--c2', '--c3', '--c4'];
+  const esc2 = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  function proj(lon, lat, W, H) {
-    const b = base.bbox;
-    const x = (lon - b.minLon) / (b.maxLon - b.minLon) * W, y = (1 - (lat - b.minLat) / (b.maxLat - b.minLat)) * H;
-    return [(x - W / 2) * view.s + W / 2 + view.x, (y - H / 2) * view.s + H / 2 + view.y];
-  }
-  // 지도가 화면 밖으로 너무 나가지 않게 이동 범위를 막는다
-  function clamp() {
-    const W = cv.clientWidth, H = cv.clientHeight, mx = W * (view.s - 1) / 2, my = H * (view.s - 1) / 2;
-    view.x = Math.max(-mx, Math.min(mx, view.x)); view.y = Math.max(-my, Math.min(my, view.y));
-  }
-  // (cx, cy) 지점이 그대로 있도록 배율을 바꾼다
-  function zoomTo(ns, cx, cy) {
-    ns = Math.max(MIN, Math.min(MAX, ns));
-    const W = cv.clientWidth, H = cv.clientHeight, k = ns / view.s;
-    view.x = (cx - W / 2) - ((cx - W / 2) - view.x) * k; view.y = (cy - H / 2) - ((cy - H / 2) - view.y) * k;
-    view.s = ns; clamp(); syncZoom(); draw();
-  }
-  function syncZoom() {
-    document.getElementById('zLv').textContent = '×' + (Math.round(view.s * 10) / 10);
-    document.getElementById('zIn').disabled = view.s >= MAX; document.getElementById('zOut').disabled = view.s <= MIN;
-  }
+  const map = L.map(el, { zoomControl: false, scrollWheelZoom: false, maxZoom: 17, attributionControl: true }).setView([37.52, 127.0], 9);
+  L.control.zoom({ position: 'topright', zoomInTitle: T('map.zoomIn'), zoomOutTitle: T('map.zoomOut') }).addTo(map);
+  let fitBounds = null;
+  const Fit = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+      const d = L.DomUtil.create('div', 'leaflet-bar leaflet-control-fit');
+      const a = L.DomUtil.create('a', '', d); a.href = '#'; a.role = 'button'; a.textContent = '⤢'; a.title = T('map.fit'); a.setAttribute('aria-label', T('map.fit'));
+      L.DomEvent.on(a, 'click', e => { L.DomEvent.stop(e); fit(); });
+      this._a = a; return d;
+    },
+  });
+  const fitCtl = new Fit().addTo(map);
+  const fit = () => fitBounds && map.fitBounds(fitBounds, { padding: [8, 8] });
 
-  function draw() {
+  // ---- 바탕 지도 타일: 키가 필요 없는 OpenStreetMap 타일 하나만 쓴다. 다크 모드는 색만 반전한다(CSS)
+  let tile = null;
+  function setTiles() {
+    if (!tile) {
+      tile = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+    }
+    el.classList.toggle('dark-tiles', document.documentElement.dataset.theme === 'dark');
+  }
+  setTiles();
+
+  // ---- 서울·경기 행정구역 경계
+  let areas = null, base = null, traffic = null, trafficErr = null, loading = false, pins = L.layerGroup().addTo(map), roads = L.layerGroup().addTo(map);
+  function areaStyle(f) {
+    const seoul = f.properties.p === '서울';
+    return { color: css(seoul ? '--seoul' : '--gg'), weight: 1.4, opacity: .9, fillColor: css(seoul ? '--seoul' : '--gg'), fillOpacity: .13 };
+  }
+  async function loadAreas() {
+    try {
+      const gj = await (await fetch('/seoul-gyeonggi.json')).json();
+      areas = L.geoJSON(gj, {
+        style: areaStyle,
+        onEachFeature: (f, layer) => {
+          layer.bindTooltip(f.properties.n, { permanent: true, direction: 'center', className: 'area-label' });
+          layer.on('mouseover', () => layer.setStyle({ fillOpacity: .3, weight: 2.2 }));
+          layer.on('mouseout', () => layer.setStyle(areaStyle(f)));
+        },
+      }).addTo(map);
+      areas.bringToBack(); tile.bringToBack();
+      map.invalidateSize(false);
+      fitBounds = areas.getBounds(); map.fitBounds(fitBounds, { padding: [8, 8], animate: false });
+      map.setMinZoom(Math.max(7, map.getZoom() - 1)); map.setMaxBounds(fitBounds.pad(0.4));
+      labels();
+    } catch { statusEl.textContent = '경계를 불러오지 못했어요.'; }
+  }
+  // 글자가 겹치지 않게 어느 정도 확대했을 때만 지역 이름을 보여 준다
+  function labels() { el.classList.toggle('nolabel', map.getZoom() < 10); }
+  map.on('zoomend', labels);
+
+  // ---- 예약 위치 · 공항
+  function drawPins() {
+    pins.clearLayers();
     if (!base) return;
-    const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-    if (!W || !H) return;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = css('--surface'); ctx.fillRect(0, 0, W, H);
-
-    // 교통 선
-    if (traffic && traffic.lines && traffic.lines.length) {
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.min(2.2 + (view.s - 1) * .5, 5);
-      for (const lv of [0, 1, 2, 3, 4]) {
-        ctx.strokeStyle = css(LV[lv]); ctx.beginPath();
-        for (const l of traffic.lines) {
-          if (l.c !== lv) continue;
-          l.p.forEach(([lon, lat], i) => { const [x, y] = proj(lon, lat, W, H); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-        }
-        ctx.stroke();
-      }
-    }
-
-    // 구·시·군 이름
-    ctx.font = '10px Pretendard, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = css('--mute');
-    for (const [name, [lat, lon]] of Object.entries(base.centers)) {
-      const [x, y] = proj(lon, lat, W, H);
-      ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill();
-      ctx.fillText(name, x, y - 5);
-    }
-
-    // 예약 위치(구·시·군별 개수)
     const cnt = {};
     for (const i of ((typeof data !== 'undefined' && data && data.items) || [])) cnt[i.district] = (cnt[i.district] || 0) + 1;
-    ctx.textBaseline = 'middle';
     for (const [d, n] of Object.entries(cnt)) {
       const c = base.centers[d]; if (!c) continue;
-      const [x, y] = proj(c[1], c[0], W, H), r = 8 + Math.min(n, 5) * 1.5;
-      ctx.fillStyle = css('--cta'); ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
-      ctx.fillStyle = '#fff'; ctx.font = '700 11px Pretendard, sans-serif'; ctx.fillText(String(n), x, y + .5);
+      const size = 24 + Math.min(n, 5) * 3;
+      L.marker(c, { icon: L.divIcon({ className: '', html: `<div class="rsv-pin" style="width:${size}px;height:${size}px">${n}</div>`, iconSize: [size, size] }), title: `${d} ${n}` })
+        .bindTooltip(`${esc2(d)} · ${n}`, { direction: 'top' }).addTo(pins);
     }
-
-    // 인천공항
-    ctx.textBaseline = 'alphabetic';
     for (const k of ['T1', 'T2']) {
-      const a = base.airport[k], [x, y] = proj(a.lon, a.lat, W, H);
-      ctx.fillStyle = css('--red'); ctx.fillRect(x - 5, y - 5, 10, 10);
+      const a = base.airport[k];
+      L.marker([a.lat, a.lon], { icon: L.divIcon({ className: '', html: '<div class="apt-pin" style="width:14px;height:14px"></div>', iconSize: [14, 14] }) })
+        .bindTooltip(esc2(a.name), { direction: 'top' }).addTo(pins);
     }
-    const a1 = base.airport.T1, [ax, ay] = proj(a1.lon, a1.lat, W, H);
-    ctx.fillStyle = css('--ink'); ctx.font = '700 11px Pretendard, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(T('map.airport'), ax + 10, ay + 4);
+  }
+
+  // ---- ITS 실시간 도로 구간(좌표가 있을 때)
+  function drawRoads() {
+    roads.clearLayers();
+    if (!traffic || !traffic.lines) return;
+    for (const l of traffic.lines) {
+      L.polyline(l.p.map(([lon, lat]) => [lat, lon]), { color: css(LV[l.c] || '--c0'), weight: 4, opacity: .9 })
+        .bindTooltip(`${esc2(l.n || '')}${l.s != null ? ' · ' + l.s + 'km/h' : ''}`, { sticky: true }).addTo(roads);
+    }
   }
 
   function renderStatus() {
     statusEl.className = 'map-status'; logEl.innerHTML = '';
     if (!base) { statusEl.textContent = T('map.loading'); return; }
     if (!base.hasKey) { statusEl.className = 'map-status err'; statusEl.textContent = T('map.nokey'); return; }
-    if (loading && !traffic) { statusEl.textContent = T('map.loading'); return; }
     if (trafficErr) { statusEl.className = 'map-status err'; statusEl.textContent = TV('map.fail', { r: trafficErr }); return; }
     if (!traffic) { statusEl.textContent = T('map.loading'); return; }
     if (!traffic.count) { statusEl.textContent = T('map.nodata'); return; }
@@ -99,48 +102,38 @@
     statusEl.textContent = TV('map.updated', { t: when, n: traffic.count }) + (traffic.avgSpeed != null ? ' · ' + TV('map.avg', { v: traffic.avgSpeed }) : '');
     const parts = [];
     if (!traffic.hasGeometry) parts.push(`<p>${T('map.nogeo')}</p>`);
-    if (traffic.slowest && traffic.slowest.length) parts.push(`<p><b>${T('map.slowest')}</b><br>${traffic.slowest.map(s => `${esc(s.name || '-')} · ${s.speed}km/h`).join('<br>')}</p>`);
+    if (traffic.slowest && traffic.slowest.length) parts.push(`<p><b>${T('map.slowest')}</b><br>${traffic.slowest.map(s => `${esc2(s.name || '-')} · ${s.speed}km/h`).join('<br>')}</p>`);
     logEl.innerHTML = parts.join('');
   }
 
   async function loadBase() {
-    try { const r = await api('/api/livemap?kind=base'); if (r.ok) base = await r.json(); } catch { /* 아래에서 상태로 표시 */ }
-    renderStatus(); draw();
+    try { const r = await api('/api/livemap?kind=base'); if (r.ok) base = await r.json(); } catch { /* 상태로 표시 */ }
+    renderStatus(); drawPins();
   }
   async function loadTraffic() {
     if (!base || !base.hasKey || loading) return;
-    loading = true; renderStatus();
+    loading = true;
     try {
       const r = await api('/api/livemap?kind=traffic');
-      if (r.status === 401) return;
+      if (r.status === 401) { loading = false; return; }
       const j = await r.json();
       if (j.ok) { traffic = j; trafficErr = null; } else { trafficErr = j.reason || '?'; }
     } catch (e) { trafficErr = e.message; }
-    loading = false; renderStatus(); draw();
+    loading = false; renderStatus(); drawRoads();
   }
 
   let started = false;
   window.addEventListener('admin-render', async () => {
     if (!started) {
-      started = true; await loadBase(); loadTraffic();
-      timer = setInterval(() => { if (!document.hidden && !document.getElementById('app').hidden) loadTraffic(); }, 5 * 60e3);
-    } else draw();
+      started = true;
+      map.invalidateSize(false); // 숨겨진 상태에서 만들어졌으므로 보이는 크기로 다시 계산
+      loadAreas(); await loadBase(); loadTraffic();
+      setInterval(() => { if (!document.hidden && !document.getElementById('app').hidden) loadTraffic(); }, 5 * 60e3);
+    } else drawPins();
   });
   document.getElementById('mapRefresh').addEventListener('click', loadTraffic);
-  const W = () => cv.clientWidth, H = () => cv.clientHeight;
-  document.getElementById('zIn').addEventListener('click', () => zoomTo(view.s * 1.6, W() / 2, H() / 2));
-  document.getElementById('zOut').addEventListener('click', () => zoomTo(view.s / 1.6, W() / 2, H() / 2));
-  document.getElementById('zReset').addEventListener('click', () => { view.s = 1; view.x = 0; view.y = 0; syncZoom(); draw(); });
-  cv.addEventListener('wheel', e => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); const r = cv.getBoundingClientRect(); zoomTo(view.s * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-  cv.addEventListener('dblclick', e => { const r = cv.getBoundingClientRect(); zoomTo(view.s * 1.6, e.clientX - r.left, e.clientY - r.top); });
-  let drag = null;
-  cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); });
-  cv.addEventListener('pointermove', e => { if (!drag) return; view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; clamp(); draw(); });
-  const end = () => { drag = null; cv.classList.remove('drag'); };
-  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
-  window.addEventListener('resize', () => { clamp(); draw(); });
-  syncZoom();
-  window.addEventListener('themechange', draw);
-  window.addEventListener('langchange', () => { renderStatus(); draw(); });
+  window.addEventListener('themechange', () => { setTiles(); if (areas) areas.setStyle(areaStyle); drawRoads(); });
+  window.addEventListener('langchange', () => { renderStatus(); fitCtl._a && (fitCtl._a.title = T('map.fit')); });
+  window.addEventListener('resize', () => map.invalidateSize());
   renderStatus();
 })();
