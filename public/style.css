@@ -243,7 +243,7 @@ footer b { color: #fff; }
 /* 관리자 지도 */
 :root { --seoul: #3b82f6; --gg: #14b8a6; --c1: #2fbf71; --c2: #f0a020; --c3: #e5484d; --c4: #8f1d2c; --c0: #9aa0aa; }
 :root[data-theme="dark"] { --c1: #3ddc84; --c2: #ffb340; --c3: #ff6b6b; --c4: #d63a5a; --c0: #5d6572; }
-.map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin-top: 20px; align-items: start; }
+.map-grid { --map-h: max(460px, min(760px, 82vh)); display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin-top: 20px; align-items: start; }
 .map-box { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
 .map-hint { margin: 0; color: var(--mute); font-size: 13px; }
 .map-side { display: grid; gap: 14px; }
@@ -373,7 +373,7 @@ tr:last-child td { border-bottom: 0; }
 
 /* Leaflet 지도 */
 .map-box { padding: 6px; }
-.mapEl { width: 100%; height: min(760px, 82vh); min-height: 460px; border-radius: 4px; background: var(--surface); z-index: 0; }
+.mapEl { width: 100%; height: var(--map-h); min-height: 460px; border-radius: 4px; background: var(--surface); z-index: 0; }
 .mapEl .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 22px; }
 :root[data-theme="dark"] .mapEl .leaflet-control-zoom a, :root[data-theme="dark"] .mapEl .leaflet-bar a { background: var(--surface); color: var(--ink); border-color: var(--line2); }
 :root[data-theme="dark"] .leaflet-container { background: #0e1116; }
@@ -448,11 +448,11 @@ tr:last-child td { border-bottom: 0; }
 .rsv-pin.dim, .ev-pin.dim { opacity: .3; }
 .legend i.dot.ev { border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
 .legend i.dot.ev.acc { background: var(--c3); } .legend i.dot.ev.con { background: var(--c2); border-radius: 3px; } .legend i.dot.ev.wea { background: var(--zone5); }
-/* 배경 지도는 색을 빼서 구역 색과 사고 점이 잘 보이게 한다 */
-.mapEl .leaflet-tile-pane { filter: grayscale(.9) brightness(1.04) contrast(.9); }
-.mapEl.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(.8) brightness(.8) contrast(.9); }
-.mapEl.mode-traffic .leaflet-tile-pane { filter: grayscale(.6) brightness(1.02); }
-.mapEl.mode-traffic.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(.5) brightness(.85) contrast(.95); }
+/* 배경 지도는 원래 색을 살리되 아주 살짝만 눌러서(채도 85%) 구역 색과 사고 점이 묻히지 않게 한다 */
+.mapEl .leaflet-tile-pane { filter: saturate(.85) brightness(1.03) contrast(.97); }
+.mapEl.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) saturate(.85) brightness(.88) contrast(.95); }
+.mapEl.mode-traffic .leaflet-tile-pane { filter: saturate(1) brightness(1.02); }
+.mapEl.mode-traffic.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) saturate(.95) brightness(.9) contrast(.95); }
 @media (max-width: 1100px) { .map-grid { grid-template-columns: 1fr; } }
 
 /* 호차 버튼(탭) */
@@ -491,3 +491,12 @@ tr:last-child td { border-bottom: 0; }
   .ticker-track { position: static; transform: none; animation: none; }
 }
 @media (max-width: 600px) { .ticker-track { font-size: 20px; } .ticker-view { height: 44px; } .ticker-tag { padding: 0 10px; font-size: 13px; } }
+
+/* 오른쪽 패널: 지도와 같은 높이로 맞추고, 넘치면 패널 안에서 스크롤 */
+.side-sec[hidden] { display: none; }
+.map-grid { align-items: start; }
+.map-side { height: calc(var(--map-h) + 14px); overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-gutter: stable; align-content: start; }
+.map-side::-webkit-scrollbar { width: 8px; }
+.map-side::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 8px; }
+.map-side::-webkit-scrollbar-track { background: transparent; }
+@media (max-width: 1100px) { .map-side { height: auto; max-height: 70vh; } }
