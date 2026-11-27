@@ -13,7 +13,7 @@
     set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { /* 저장소를 못 쓰면 이번 방문에만 */ } },
   };
 
-  const map = L.map(el, { zoomControl: false, scrollWheelZoom: true, wheelPxPerZoomLevel: 90, maxZoom: 17, attributionControl: true }).setView([37.52, 127.0], 9);
+  const map = L.map(el, { zoomControl: false, scrollWheelZoom: true, wheelPxPerZoomLevel: 90, zoomSnap: 0.25, zoomDelta: 0.75, maxZoom: 17, attributionControl: true }).setView([37.52, 127.0], 9);
   L.control.zoom({ position: 'topright', zoomInTitle: T('map.zoomIn'), zoomOutTitle: T('map.zoomOut') }).addTo(map);
   let fitBounds = null;
   const Fit = L.Control.extend({
@@ -90,7 +90,7 @@
   }
   // 호차 선택: 0 = 전체(한꺼번에 보기), 1~ = 그 호차 구역과 정보만
   function selectCar(car) {
-    focusCar = car; window.hdSel.car = car;
+    focusCar = car; window.hdSel.car = car; touched = true;
     restyle();
     if (focusCar && outlines[focusCar]) map.fitBounds(outlines[focusCar].layer.getBounds(), { padding: [30, 30] }); else fit();
     window.dispatchEvent(new Event('car-select'));
@@ -343,6 +343,10 @@
   document.getElementById('mapRefresh').addEventListener('click', loadTraffic);
   document.getElementById('tickerBtn').addEventListener('click', e => { const box = document.getElementById('ticker'); const on = box.classList.toggle('paused'); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = on ? '▶' : '⏸'; });
   window.addEventListener('resize', () => { tickerKey = ''; renderTicker(); });
+  // 지도 칸 크기가 바뀌면(화면 크기·배치 변경) 다시 계산하고, 사용자가 아직 지도를 만지지 않았다면 서울·경기가 꽉 차게 다시 맞춘다
+  let touched = false;
+  ['pointerdown', 'wheel', 'dblclick'].forEach(ev => el.addEventListener(ev, () => { touched = true; }, { passive: true }));
+  if (window.ResizeObserver) new ResizeObserver(() => { map.invalidateSize(false); if (!touched && !focusCar && fitBounds) map.fitBounds(fitBounds, { padding: [8, 8], animate: false }); }).observe(el);
   document.getElementById('mapMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.mode; store.set('hd-map-mode', mode); restyle(); });
   document.getElementById('itsSave').addEventListener('click', () => {
     const v = document.getElementById('itsKey').value.trim(); if (!v) return;
