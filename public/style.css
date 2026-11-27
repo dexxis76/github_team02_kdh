@@ -471,9 +471,14 @@ tr:last-child td { border-bottom: 0; }
 
 /* LED 전광판 */
 .ticker { display: flex; align-items: stretch; margin: 14px 0 12px; background: #05070a; border: 2px solid #1c2530; border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 18px rgba(0, 0, 0, .8); }
-.ticker-tag { flex: none; display: grid; place-items: center; padding: 0 16px; background: #7a0f16; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 1px; border-right: 2px solid #1c2530; }
-.ticker.lv-ok .ticker-tag { background: #145a32; }
-.ticker.lv-info .ticker-tag { background: #7a5c0a; }
+.ticker-tag { flex: none; display: grid; place-items: center; padding: 0 16px; background: #3a3f47; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 1px; border-right: 2px solid #1c2530; }
+.ticker.lv-emerg .ticker-tag { background: #b3121c; }
+.ticker.lv-ok .ticker-tag { background: #148a4a; }
+.ticker.lv-info .ticker-tag { background: #8a6508; }
+/* 상태에 따라 테두리도 같은 색으로 빛나게: 빨강=30분 안에 새 사고, 초록=새 사고 없음, 주황=확인 불가 */
+.ticker.lv-emerg { border-color: #b3121c; box-shadow: inset 0 0 18px rgba(0, 0, 0, .8), 0 0 10px rgba(229, 72, 77, .45); }
+.ticker.lv-ok { border-color: #148a4a; box-shadow: inset 0 0 18px rgba(0, 0, 0, .8), 0 0 8px rgba(61, 255, 138, .25); }
+.ticker.lv-info { border-color: #8a6508; }
 .ticker-view { position: relative; flex: 1; min-width: 0; overflow: hidden; height: 48px; }
 /* LED 점(도트) 느낌: 작은 격자 무늬를 글자 위에 덮는다 */
 .ticker-view::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, transparent 0 1.2px, rgba(0, 0, 0, .55) 1.7px); background-size: 4px 4px; }
@@ -505,3 +510,10 @@ tr:last-child td { border-bottom: 0; }
 .mapEl .leaflet-tile { outline: 1px solid transparent; }
 .mapEl .leaflet-tile-container img { mix-blend-mode: plus-lighter; }
 :root[data-theme="dark"] .mapEl .leaflet-tile-container img { mix-blend-mode: normal; }
+
+/* 새 사고(30분 이내)는 깜빡이는 고리로, 오래전에 시작해 진행 중인 사고는 흐린 회색 점으로 */
+.ev-pin.new { animation: evPulse 1.4s ease-out infinite; }
+@keyframes evPulse { 0% { box-shadow: 0 0 0 0 rgba(229, 72, 77, .75), 0 1px 4px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 0 0 16px rgba(229, 72, 77, 0), 0 1px 4px rgba(0, 0, 0, .5); } }
+.ev-pin.old { opacity: .55; }
+.route-log p.urgent { border-left-color: var(--red); }
+@media (prefers-reduced-motion: reduce) { .ev-pin.new { animation: none; } }
