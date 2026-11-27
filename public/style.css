@@ -243,7 +243,7 @@ footer b { color: #fff; }
 /* 관리자 지도 */
 :root { --seoul: #3b82f6; --gg: #14b8a6; --c1: #2fbf71; --c2: #f0a020; --c3: #e5484d; --c4: #8f1d2c; --c0: #9aa0aa; }
 :root[data-theme="dark"] { --c1: #3ddc84; --c2: #ffb340; --c3: #ff6b6b; --c4: #d63a5a; --c0: #5d6572; }
-.map-grid { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 1fr); gap: 24px; margin-top: 20px; align-items: start; }
+.map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin-top: 20px; align-items: start; }
 .map-box { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
 .map-hint { margin: 0; color: var(--mute); font-size: 13px; }
 .map-side { display: grid; gap: 14px; }
@@ -373,7 +373,7 @@ tr:last-child td { border-bottom: 0; }
 
 /* Leaflet 지도 */
 .map-box { padding: 6px; }
-.mapEl { width: 100%; height: min(680px, 78vh); min-height: 420px; border-radius: 4px; background: var(--surface); z-index: 0; }
+.mapEl { width: 100%; height: min(760px, 82vh); min-height: 460px; border-radius: 4px; background: var(--surface); z-index: 0; }
 .mapEl .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 22px; }
 :root[data-theme="dark"] .mapEl .leaflet-control-zoom a, :root[data-theme="dark"] .mapEl .leaflet-bar a { background: var(--surface); color: var(--ink); border-color: var(--line2); }
 :root[data-theme="dark"] .leaflet-container { background: #0e1116; }
@@ -421,3 +421,36 @@ tr:last-child td { border-bottom: 0; }
 .link-btn { border: 0; background: none; color: var(--link); text-decoration: underline; padding: 0; font-size: 12px; cursor: pointer; }
 .its-badge { margin: 6px 0 0; font-size: 12px; color: var(--sub); }
 .its-badge.warn { color: var(--red); font-weight: 700; }
+
+/* 지도 보기 전환 · 호차 목록 · 라벨 */
+.map-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 20px; }
+.map-top .map-hint { margin: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 100px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; color: var(--sub); height: 40px; padding: 0 20px; font-size: 15px; font-weight: 700; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--cta); color: #fff; }
+.side-sec { background: var(--card); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 10px; }
+.side-sec h4 { margin: 0; font-size: 17px; }
+.side-note { margin: 0; color: var(--sub); font-size: 13px; }
+.car-list { display: grid; gap: 6px; }
+.car-item { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; padding: 8px 10px; border: 2px solid transparent; border-radius: var(--r); background: var(--surface); color: var(--ink); }
+.car-item:hover { border-color: var(--car); }
+.car-item.on { border-color: var(--car); background: color-mix(in srgb, var(--car) 14%, var(--surface)); }
+.car-item i { font-style: normal; width: 28px; height: 28px; border-radius: 50%; background: var(--car); color: #fff; display: grid; place-items: center; font-weight: 700; flex: none; }
+.car-item span { display: grid; line-height: 1.3; min-width: 0; }
+.car-item small { color: var(--sub); font-size: 12px; }
+.zlabel { display: inline-flex; align-items: center; gap: 4px; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.zlabel i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; background: var(--car); color: #fff; display: grid; place-items: center; font: 700 12px Pretendard, sans-serif; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .45); }
+.zlabel span { font: 700 12px Pretendard, sans-serif; color: #1f2933; background: rgba(255, 255, 255, .88); border-radius: 100px; padding: 1px 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+:root[data-theme="dark"] .zlabel span { color: #e8eaed; background: rgba(18, 21, 27, .85); }
+.zlabel.big i { width: 34px; height: 34px; font-size: 17px; }
+.zlabel.big span { font-size: 15px; padding: 3px 12px; }
+.zlabel.dim { opacity: .25; }
+.rsv-pin.dim, .ev-pin.dim { opacity: .3; }
+.legend i.dot.ev { border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
+.legend i.dot.ev.acc { background: var(--c3); } .legend i.dot.ev.con { background: var(--c2); border-radius: 3px; } .legend i.dot.ev.wea { background: var(--zone5); }
+/* 배경 지도는 색을 빼서 구역 색과 사고 점이 잘 보이게 한다 */
+.mapEl .leaflet-tile-pane { filter: grayscale(.9) brightness(1.04) contrast(.9); }
+.mapEl.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(.8) brightness(.8) contrast(.9); }
+.mapEl.mode-traffic .leaflet-tile-pane { filter: grayscale(.6) brightness(1.02); }
+.mapEl.mode-traffic.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(.5) brightness(.85) contrast(.95); }
+@media (max-width: 1100px) { .map-grid { grid-template-columns: 1fr; } }
