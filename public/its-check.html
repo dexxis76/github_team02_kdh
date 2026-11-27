@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ITS 연결 확인</title>
+<style>
+  body { font: 16px/1.6 system-ui, 'Pretendard', sans-serif; max-width: 760px; margin: 0 auto; padding: 24px 16px; color: #222; background: #fff; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  p, li { color: #444; }
+  label { display: block; font-weight: 700; margin-top: 14px; }
+  input { width: 100%; box-sizing: border-box; height: 44px; padding: 0 12px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
+  button { margin-top: 16px; height: 46px; padding: 0 22px; font: inherit; font-weight: 700; color: #fff; background: #0260fa; border: 0; border-radius: 6px; cursor: pointer; }
+  button[disabled] { opacity: .5; cursor: wait; }
+  pre { background: #f5f6f8; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; font-size: 13px; }
+  .ok { color: #11805b; font-weight: 700; } .bad { color: #c62828; font-weight: 700; }
+  .note { background: #fff7e6; border-left: 4px solid #e0a25a; padding: 10px 14px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>ITS 연결 확인</h1>
+<p class="note">이 페이지는 <b>내 컴퓨터의 브라우저</b>에서 ITS를 직접 불러 보고, 브라우저가 응답을 받을 수 있는지 확인합니다. 입력한 키는 서버로 보내지 않고 저장하지도 않습니다(이 화면을 닫으면 사라집니다). 결과 보고서에도 키는 들어가지 않습니다.</p>
+
+<label for="k1">ITS 키 (교통소통정보용)</label>
+<input id="k1" type="password" autocomplete="off" spellcheck="false" placeholder="여기에 붙여 넣기">
+<label for="k2">ITS 키 2 (있으면. 돌발·사고 정보용일 수 있어요)</label>
+<input id="k2" type="password" autocomplete="off" spellcheck="false" placeholder="없으면 비워 두세요">
+<button id="go" type="button">확인하기</button>
+
+<h2>결과</h2>
+<div id="out"><p>위에 키를 넣고 「확인하기」를 눌러 주세요.</p></div>
+<h2>이 결과를 복사해서 알려 주세요</h2>
+<pre id="report">(아직 없음)</pre>
+
+<script>
+const BASE = 'https://openapi.its.go.kr:9443';
+const BOX = 'minX=126.3&maxX=127.75&minY=36.85&maxY=38.2'; // 서울·경기
+const $ = s => document.querySelector(s);
+const hide = (txt, k) => String(txt).split(k).join('***');
+
+// 응답 어디에 항목 배열이 있든 찾아 준다
+function items(d) {
+  const b = (d && (d.body || (d.response && d.response.body))) || d || {};
+  let it = b.items != null ? b.items : b.item != null ? b.item : b;
+  if (it && !Array.isArray(it) && it.item) it = it.item;
+  return Array.isArray(it) ? it : (it && typeof it === 'object' ? [it] : []);
+}
+
+$('#go').addEventListener('click', async () => {
+  const keys = [['키1', $('#k1').value.trim()], ['키2', $('#k2').value.trim()]].filter(x => x[1]);
+  if (!keys.length) { $('#out').innerHTML = '<p class="bad">키를 하나 이상 넣어 주세요.</p>'; return; }
+  $('#go').disabled = true; $('#out').innerHTML = '<p>확인하는 중…</p>';
+  const results = [];
+  for (const [name, k] of keys) {
+    for (const [label, path, extra] of [['교통소통정보(trafficInfo)', 'trafficInfo', 'type=all&drcType=all'], ['돌발정보(eventInfo)', 'eventInfo', 'type=all&eventType=all']]) {
+      const url = `${BASE}/${path}?apiKey=${encodeURIComponent(k)}&${extra}&${BOX}&getType=json`;
+      const t0 = performance.now();
+      try {
+        const r = await fetch(url); const text = await r.text(); const ms = Math.round(performance.now() - t0);
+        let j = null; try { j = JSON.parse(text); } catch { /* 처리 아래 */ }
+        if (!j) { results.push({ title: `${name} · ${label}`, ok: false, line: `JSON이 아닌 응답 (HTTP ${r.status}): ${hide(text.slice(0, 100), k)}` }); continue; }
+        const list = items(j), first = list[0] || {}, fields = Object.keys(first);
+        const geo = fields.filter(f => /coord|lat|lon|^x$|^y$|startx|starty|endx|endy/i.test(f));
+        const code = j.header && j.header.resultCode;
+        results.push({ title: `${name} · ${label}`, ok: list.length > 0 || code === 0, line: `HTTP ${r.status} · ${ms}ms · resultCode ${code} · 항목 ${list.length}개 · 좌표 필드: ${geo.length ? geo.join(', ') : '없음'}`, fields, sample: hide(JSON.stringify(first).slice(0, 260), k) });
+      } catch (e) {
+        results.push({ title: `${name} · ${label}`, ok: false, line: `브라우저가 응답을 못 받음 (${e.name}: ${e.message}) → 주소창에서는 열리는데 여기서만 이러면 ITS가 브라우저 호출(CORS)을 막은 것` });
+      }
+    }
+  }
+  $('#out').innerHTML = results.map(r => `<p><b>${r.title}</b><br><span class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '성공' : '실패'}</span> — ${r.line}${r.fields ? `<br><small>필드: ${r.fields.join(', ')}</small>` : ''}</p>`).join('');
+  $('#report').textContent = results.map(r => `${r.title}: ${r.ok ? '성공' : '실패'} | ${r.line}${r.fields ? ' | 필드: ' + r.fields.join(',') : ''}${r.sample ? ' | 예: ' + r.sample : ''}`).join('\n');
+  $('#go').disabled = false;
+});
+</script>
+</body>
+</html>
