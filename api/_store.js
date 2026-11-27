@@ -108,7 +108,7 @@ function balance(rs) {
           const relieve = bags[from] > R.MAX_BAGS_PER_VEHICLE && bags[to] + r.bags <= R.MAX_BAGS_PER_VEHICLE;
           const improves = gap > GAP && Math.abs(gap - 2 * w) < gap - 1;
           if (!relieve && !improves) continue;
-          const score = (relieve ? 0 : 1000) + near - gap / 100; // 적재 해소 우선, 그다음 가까운 곳, 격차가 큰 쪽
+          const score = (relieve ? 0 : 1000) + load[to] + near * 0.5; // 적재 해소 우선, 그다음 가장 한가한 호차, 같으면 가까운 곳
           if (!best || score < best.score) best = { tag: r.tag, to, score };
         }
       }
