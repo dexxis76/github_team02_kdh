@@ -50,6 +50,14 @@
     <h2 class="en" data-i18n="map.en" style="font-size:44px">Live Map</h2>
     <p class="ko" data-i18n="map.ko" style="font-size:26px">서울·경기 실시간 지도</p>
     <p class="desc" data-i18n="map.desc">서울·경기 호차 구역 위에 예약 위치와 ITS 실시간 사고·공사 지점을 겹쳐 보여 줘요.</p>
+    <div class="ticker" id="ticker" role="status" aria-live="off">
+      <span class="ticker-tag" data-i18n="tk.tag">긴급 안내</span>
+      <div class="ticker-view"><div class="ticker-track" id="tickerTrack" aria-hidden="true"></div></div>
+      <button type="button" class="ticker-btn" id="tickerBtn" aria-pressed="false" aria-label="전광판 멈춤" data-i18n-attr="aria-label:tk.pause;title:tk.pause">⏸</button>
+      <span class="sr-only" id="tickerSr"></span>
+    </div>
+    <div class="car-tabs" id="carTabs" role="tablist" aria-label="호차 선택" data-i18n-attr="aria-label:tab.label"></div>
+    <p class="car-only" id="carOnly" hidden><span id="carOnlyText"></span> <button type="button" class="link-btn" id="carAll" data-i18n="tab.showAll">전체 보기</button></p>
     <div class="map-top">
       <div class="seg" id="mapMode" role="group" aria-label="지도 보기" data-i18n-attr="aria-label:map.modeLabel">
         <button type="button" data-mode="zone" aria-pressed="false" data-i18n="map.mode.zone">배차 구역</button>
@@ -61,6 +69,7 @@
     <div class="map-grid">
       <div class="map-box"><div id="mapEl" class="mapEl" role="region" aria-label="지도" data-i18n-attr="aria-label:map.canvas"></div></div>
       <aside class="map-side">
+        <section class="side-sec car-detail" id="carDetail" hidden></section>
         <section class="side-sec">
           <h4 data-i18n="map.secZone">배차 구역 (호차)</h4>
           <p class="side-note" data-i18n="map.zoneHint">호차를 누르면 그 구역만 또렷하게 보여요. 다시 누르면 전체로 돌아가요.</p>

@@ -63,13 +63,14 @@ function setStatus(tag, status) {
 // 배차 추천: 차량은 4대(1~4호차) 고정이고, 수거지(구·시·군)가 속한 호차(기본 구역, _zones.js)가 먼저 맡는다.
 // 공평하게 나누기: 같은 수거일 × 2시간 시간대 안에서 한 호차에 일이 쏠리면, 가장 바쁜 호차의 예약 중 이웃 호차 구역에 가까운 것을
 // 가장 한가한 호차로 넘긴다. 일이 비슷해지거나 더 줄일 수 없을 때까지 반복한다(적재 40개 초과도 우선 해소).
-// 일이 적을 때는 나누지 않는다(차량을 불필요하게 늘리면 효율이 떨어지므로): 호차의 캐리어가 20개를 넘을 때만 넘긴다.
-//   작업량 = 캐리어 수 + 방문지당 3 + 공항까지 직선거리 10km당 1 (데모 값)
+// 일이 적을 때는 나누지 않고 오히려 합친다(차량을 불필요하게 늘리면 효율이 떨어지므로): 호차의 캐리어가 20개를 넘을 때만 넘기고,
+// 일이 적은 호차는 가까운 이웃 호차에 합쳐 한 대가 맡는다(합쳐도 20개 이하일 때).
+//   작업량 = 캐리어 수 + 방문지당 3 + 공항까지 직선거리 4km당 1 (데모 값). 먼 곳일수록 이동 시간이 길어서 더 크게 센다
 // 방문 순서: 공항에서 먼 곳 → 가까운 곳(직선거리 기준). 실시간 교통·사고는 아직 반영하지 않는다.
 const { zoneOf, ZONES } = require('./_zones');
 const { CENTERS, AIRPORT } = require('./_geo');
 
-const STOP_COST = 3, KM_PER_UNIT = 10, GAP = 12, NEAR_KM = 25, BUSY_BAGS = 20; // 한 호차가 캐리어 20개(적재 한도의 절반)를 넘어야 바쁜 것으로 본다
+const STOP_COST = 3, KM_PER_UNIT = 4, GAP = 12, NEAR_KM = 35, BUSY_BAGS = 20; // 한 호차가 캐리어 20개(적재 한도의 절반)를 넘어야 바쁜 것으로 본다
 const km = (a, b) => {
   const rad = x => x * Math.PI / 180, dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
@@ -115,6 +116,24 @@ function balance(rs) {
     }
     if (!best) break;
     A[best.tag].car = best.to; A[best.tag].moved = true;
+  }
+  // 합치기: 일이 적은 호차는 이웃 호차에 합쳐 한 대가 맡는다(차를 불필요하게 늘리지 않음). 합친 뒤에도 캐리어 20개 이하일 때만, 이웃(35km 안)에 한해서.
+  for (let guard = 0; guard < 40; guard++) {
+    const by = {};
+    for (const r of rs) { const c = A[r.tag].car; if (c) (by[c] = by[c] || []).push(r); }
+    const bagsOf = c => (by[c] || []).reduce((n, r) => n + r.bags, 0);
+    let best = null;
+    for (const from of Object.keys(by).map(Number)) {
+      for (const to of Object.keys(by).map(Number)) {
+        if (to === from || bagsOf(from) + bagsOf(to) > BUSY_BAGS) continue;
+        const near = Math.max(...by[from].map(r => toZone(r.district, to)));
+        if (near > NEAR_KM) continue;
+        const score = bagsOf(from) * 100 + near; // 가장 한가한 호차부터, 가장 가까운 곳으로
+        if (!best || score < best.score) best = { from, to, score };
+      }
+    }
+    if (!best) break;
+    for (const r of by[best.from]) { A[r.tag].car = best.to; A[r.tag].moved = true; }
   }
   return A;
 }

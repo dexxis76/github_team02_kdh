@@ -454,3 +454,40 @@ tr:last-child td { border-bottom: 0; }
 .mapEl.mode-traffic .leaflet-tile-pane { filter: grayscale(.6) brightness(1.02); }
 .mapEl.mode-traffic.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(.5) brightness(.85) contrast(.95); }
 @media (max-width: 1100px) { .map-grid { grid-template-columns: 1fr; } }
+
+/* 호차 버튼(탭) */
+.car-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.car-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 8px; border: 2px solid var(--line2); border-radius: 100px; background: var(--surface); color: var(--ink); font-weight: 700; font-size: 14px; white-space: nowrap; }
+.car-tabs button i { font-style: normal; width: 24px; height: 24px; border-radius: 50%; background: var(--car); color: #fff; display: grid; place-items: center; font-size: 12px; }
+.car-tabs button.tab-all { padding: 0 18px; }
+.car-tabs button:hover { border-color: var(--car, var(--cta)); }
+.car-tabs button[aria-selected="true"] { border-color: var(--car, var(--cta)); background: color-mix(in srgb, var(--car, var(--cta)) 16%, var(--surface)); }
+.car-tabs button.tab-all[aria-selected="true"] { background: var(--cta); border-color: var(--cta); color: #fff; }
+.car-only { margin: 10px 0 0; padding: 8px 14px; background: var(--card); border-left: 4px solid var(--cta); border-radius: var(--r); font-size: 14px; }
+.car-detail { border-top: 5px solid var(--car); }
+.car-detail h4 { display: flex; align-items: center; gap: 8px; }
+.car-detail h4 i { font-style: normal; width: 28px; height: 28px; border-radius: 50%; background: var(--car); color: #fff; display: grid; place-items: center; font-size: 14px; }
+.car-detail p { margin: 0; font-size: 14px; }
+
+/* LED 전광판 */
+.ticker { display: flex; align-items: stretch; margin-top: 16px; background: #05070a; border: 2px solid #1c2530; border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 18px rgba(0, 0, 0, .8); }
+.ticker-tag { flex: none; display: grid; place-items: center; padding: 0 16px; background: #7a0f16; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 1px; border-right: 2px solid #1c2530; }
+.ticker.lv-ok .ticker-tag { background: #145a32; }
+.ticker.lv-info .ticker-tag { background: #7a5c0a; }
+.ticker-view { position: relative; flex: 1; min-width: 0; overflow: hidden; height: 52px; }
+/* LED 점(도트) 느낌: 작은 격자 무늬를 글자 위에 덮는다 */
+.ticker-view::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, transparent 0 1.2px, rgba(0, 0, 0, .55) 1.7px); background-size: 4px 4px; }
+.ticker-track { position: absolute; left: 0; top: 0; height: 100%; display: inline-flex; align-items: center; white-space: nowrap; gap: 48px; padding: 0 24px; transform: translateX(var(--vw, 100%)); animation: tickerMove var(--dur, 40s) linear infinite; font: 700 26px/1 'Courier New', 'D2Coding', ui-monospace, monospace; letter-spacing: 1px; will-change: transform; }
+.ticker-track span { color: #ffb000; text-shadow: 0 0 6px rgba(255, 176, 0, .9), 0 0 14px rgba(255, 140, 0, .5); }
+.ticker-track span.emerg { color: #ff4a4a; text-shadow: 0 0 6px rgba(255, 60, 60, .95), 0 0 16px rgba(255, 40, 40, .55); }
+.ticker-track span.ok { color: #3dff8a; text-shadow: 0 0 6px rgba(61, 255, 138, .9), 0 0 14px rgba(30, 200, 100, .5); }
+.ticker:hover .ticker-track, .ticker:focus-within .ticker-track, .ticker.paused .ticker-track { animation-play-state: paused; }
+.ticker-btn { flex: none; width: 48px; border: 0; border-left: 2px solid #1c2530; background: #0b1016; color: #9fb3c8; font-size: 18px; cursor: pointer; }
+.ticker-btn:hover { color: #fff; }
+@keyframes tickerMove { from { transform: translateX(var(--vw, 100%)); } to { transform: translateX(-100%); } }
+@media (prefers-reduced-motion: reduce) {
+  /* 움직임을 줄이는 설정이면 글자를 흘리지 않고 멈춘 채 옆으로 스크롤해서 읽게 한다 */
+  .ticker-view { overflow-x: auto; }
+  .ticker-track { position: static; transform: none; animation: none; }
+}
+@media (max-width: 600px) { .ticker-track { font-size: 20px; } .ticker-view { height: 44px; } .ticker-tag { padding: 0 10px; font-size: 13px; } }

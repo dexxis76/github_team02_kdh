@@ -61,7 +61,8 @@ function render() {
     <div class="tile"><small>${t('tile.veh')}</small><b>${t('unit.cars', { n: (data.cars || []).length })}</b></div>`;
 
   // 호차별 요약 (수거일 전체)
-  $('#cars').innerHTML = (data.cars || []).map(c => {
+  const sel = (window.hdSel && window.hdSel.car) || 0; // 지도에서 고른 호차(0 = 전체)
+  $('#cars').innerHTML = (data.cars || []).filter(c => !sel || c.car === sel).map(c => {
     const vs = data.vehicles.filter(v => v.car === c.car);
     const n = vs.reduce((a, v) => a + v.tags.length, 0), bg = vs.reduce((a, v) => a + v.bags, 0), over = vs.some(v => v.over);
     return `<article class="carcard" data-car="${c.car}" style="--car:${esc(c.color)}"><h4><i>${c.car}</i>${esc(t('car.label', { n: c.car }))} · ${esc(c.name)}</h4>
@@ -69,7 +70,8 @@ function render() {
       <p class="areas">${c.districts.map(esc).join(' · ')}</p></article>`;
   }).join('');
 
-  $('#veh').innerHTML = data.vehicles.length ? data.vehicles.map(v => {
+  const vehList = data.vehicles.filter(v => !sel || v.car === sel);
+  $('#veh').innerHTML = vehList.length ? vehList.map(v => {
     const pend = v.statuses.includes('접수');
     const title = v.car ? `${t('car.label', { n: v.car })} · ${v.carName}` : t('car.none');
     return `<article class="veh" style="--car:${esc(v.color)}"><h4><i class="carno">${v.car || '?'}</i>${esc(title)}</h4>
@@ -84,7 +86,7 @@ function render() {
   }).join('') : `<div class="empty" style="grid-column:1/-1">${t('veh.empty')}</div>`;
 
   $('#filter').innerHTML = ['전체', ...STATUS].map(s => `<button class="pill ${filter === s ? 'on' : ''}" data-f="${s}" style="height:40px;min-width:0;font-size:14px">${esc(t('st.' + s))}${s === '전체' ? '' : ' ' + c[s]}</button>`).join('');
-  const list = data.items.filter(i => filter === '전체' || i.status === filter);
+  const list = data.items.filter(i => (filter === '전체' || i.status === filter) && (!sel || i.car === sel));
   $('#rows').innerHTML = list.length ? list.map(i => {
     const idx = STATUS.indexOf(i.status), next = STATUS[idx + 1];
     return `<tr><td class="tagc">${esc(i.tag)}${i.demo ? `<span class="demo-tag">${t('row.demoData')}</span>` : ''}</td>
@@ -130,3 +132,6 @@ function renderConn() {
 if (pw) { api('/api/reservations').then(r => (r.ok ? showApp() : showGate())).catch(() => showGate()); } else { $('#gatePw').focus(); }
 
 window.addEventListener('langchange', () => { if (loadFail) $('#storage').textContent = window.t('adm.loadFail'); render(); renderConn(); });
+
+window.addEventListener('car-select', () => { if (data) render(); });
+document.getElementById('carAll')?.addEventListener('click', () => { document.querySelector('#carTabs button[data-car="0"]')?.click(); });
