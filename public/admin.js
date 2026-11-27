@@ -17,12 +17,12 @@ const api = (url, opts = {}) => fetch(url, { ...opts, headers: { ...(opts.header
 function showGate(msgKey) {
   clearInterval(timer); timer = null; pw = null; data = null; connData = null;
   try { sessionStorage.removeItem('hd-admin'); } catch { /* 무시 */ }
-  $('#app').hidden = true; $('#gate').hidden = false;
+  $('#app').hidden = true; $('#gate').hidden = false; $('#adminBadge').hidden = true;
   const err = $('#gateErr'); err.hidden = !msgKey; if (msgKey) err.textContent = window.t(msgKey);
   $('#gatePw').value = ''; $('#gatePw').focus();
 }
 function showApp() {
-  $('#gate').hidden = true; $('#app').hidden = false;
+  $('#gate').hidden = true; $('#app').hidden = false; $('#adminBadge').hidden = false; // 로그인 중이면 헤더에 표시
   load(); conn();
   clearInterval(timer); timer = setInterval(() => { load(); conn(); }, 10000);
 }
@@ -135,3 +135,6 @@ window.addEventListener('langchange', () => { if (loadFail) $('#storage').textCo
 
 window.addEventListener('car-select', () => { if (data) render(); });
 document.getElementById('carAll')?.addEventListener('click', () => { document.querySelector('#carTabs button[data-car="0"]')?.click(); });
+
+// 로그아웃: 이 탭에 기억한 비밀번호를 지우고 입력창으로 돌아간다
+document.getElementById('adminOut')?.addEventListener('click', () => showGate());
