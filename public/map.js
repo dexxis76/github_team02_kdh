@@ -155,6 +155,12 @@
   let events = null, evErr = null, eventsAt = null, carCount = {};
   const KINDS = { acc: { c: '--c3', t: 'its.k.acc' }, con: { c: '--c2', t: 'its.k.con' }, wea: { c: '--zone5', t: 'its.k.wea' }, etc: { c: '--c0', t: 'its.k.etc' } };
   const kindOf = e => (/사고|acc/i.test(e.eventType) ? 'acc' : /공사|cor|con/i.test(e.eventType) ? 'con' : /기상|재난|wea|dis/i.test(e.eventType) ? 'wea' : 'etc');
+  // 「긴급」은 시작한 지 30분 이내의 사고만. 오래전에 시작해 아직 처리 중인 사고는 긴급이 아니라 「진행 중」으로 따로 보여 준다.
+  const RECENT_MIN = 30;
+  const startMs = e => { const m = String(e.startDate || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?/); return m ? Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] || '00'}+09:00`) : NaN; }; // ITS 시각은 한국 시간
+  const ageMin = e => (Date.now() - startMs(e)) / 60000;
+  const isNewAcc = e => kindOf(e) === 'acc' && ageMin(e) <= RECENT_MIN && ageMin(e) >= -10; // 시계 오차 10분까지 허용
+  const ago = e => { const m = ageMin(e); if (!Number.isFinite(m)) return ''; return m < 1 ? T('its.now') : m < 60 ? TV('its.ago.m', { n: Math.floor(m) }) : m < 1440 ? TV('its.ago.h', { n: Math.floor(m / 60) }) : TV('its.ago.d', { n: Math.floor(m / 1440) }); };
   const fmtDate = v => { const m = String(v || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/); return m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : ''; };
   // 사고 지점이 어느 호차 구역인지: 가장 가까운 구·시·군 중심의 호차 (20km 안에 없으면 서비스 지역 밖)
   function carOfPoint(lat, lon) {
@@ -169,12 +175,12 @@
     evLayer.clearLayers(); carCount = {};
     if (events && base) {
       for (const e of events) {
-        const car = e.area && e.area.car; if (car) { const c = carCount[car] = carCount[car] || { acc: 0, all: 0 }; c.all++; if (kindOf(e) === 'acc') c.acc++; }
+        const car = e.area && e.area.car; if (car) { const c = carCount[car] = carCount[car] || { acc: 0, old: 0, all: 0 }; c.all++; if (isNewAcc(e)) c.acc++; else if (kindOf(e) === 'acc') c.old++; }
         if (mode === 'zone' || hid(car)) continue; // 배차 구역만 볼 때, 또는 다른 호차 구역의 점은 그리지 않는다
-        const k = kindOf(e), col = css(KINDS[k].c), size = mode === 'traffic' ? 26 : 20;
+        const k = kindOf(e), fresh = isNewAcc(e), stale = k === 'acc' && !fresh, col = css(stale ? '--mute' : KINDS[k].c), size = (mode === 'traffic' ? 26 : 20) - (stale ? 4 : 0);
         const where = e.area ? `${esc2(e.area.district)}${car ? ' · ' + esc2(TV('car.label', { n: car })) : ''}` : '';
-        L.marker([e.lat, e.lon], { icon: L.divIcon({ className: '', html: `<div class="ev-pin ${k}" style="background:${col};width:${size}px;height:${size}px;font-size:${size - 8}px;line-height:${size - 4}px">${k === 'acc' ? '!' : ''}</div>`, iconSize: [size, size] }), zIndexOffset: k === 'acc' ? 800 : 500 })
-          .bindPopup(`<b>${esc2(T(KINDS[k].t))}</b> ${esc2(e.eventDetailType || '')}<br>${esc2(e.type || '')} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}<br><small>${esc2(fmtDate(e.startDate))}${where ? ' · ' + where : ''}</small><br>${esc2(String(e.message || '').slice(0, 160))}`).addTo(evLayer);
+        L.marker([e.lat, e.lon], { icon: L.divIcon({ className: '', html: `<div class="ev-pin ${k}${fresh ? ' new' : ''}${stale ? ' old' : ''}" style="background:${col};width:${size}px;height:${size}px;font-size:${size - 8}px;line-height:${size - 4}px">${k === 'acc' ? '!' : ''}</div>`, iconSize: [size, size] }), zIndexOffset: fresh ? 900 : k === 'acc' ? 600 : 500 })
+          .bindPopup(`<b>${esc2(T(KINDS[k].t))}</b> ${esc2(e.eventDetailType || '')}<br>${esc2(e.type || '')} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}<br><small>${esc2(fmtDate(e.startDate))}${ago(e) ? ' (' + esc2(ago(e)) + ')' : ''}${where ? ' · ' + where : ''}</small><br>${esc2(String(e.message || '').slice(0, 160))}`).addTo(evLayer);
       }
     }
     applyBadges(); renderCarList(); renderTicker();
@@ -184,9 +190,9 @@
     document.querySelectorAll('.carcard[data-car]').forEach(card => {
       card.querySelector('.its-badge')?.remove();
       if (!events) return;
-      const c = carCount[card.dataset.car] || { acc: 0, all: 0 };
+      const c = carCount[card.dataset.car] || { acc: 0, old: 0, all: 0 };
       const b = document.createElement('p'); b.className = 'its-badge' + (c.acc ? ' warn' : '');
-      b.textContent = TV('its.badge', { a: c.acc, n: c.all }); card.appendChild(b);
+      b.textContent = TV('its.badge', { a: c.acc, o: c.old, n: c.all }); card.appendChild(b);
     });
   }
 
@@ -196,8 +202,8 @@
     const rsv = {};
     for (const i of ((typeof data !== 'undefined' && data && data.items) || [])) if (i.car) rsv[i.car] = (rsv[i.car] || 0) + 1;
     carListEl.innerHTML = base.zones.map(z => {
-      const c = carCount[z.car] || { acc: 0, all: 0 };
-      const meta = [rsv[z.car] ? TV('car.rsv', { n: rsv[z.car] }) : '', events && c.acc ? `<b class="bad">${esc2(TV('car.acc', { n: c.acc }))}</b>` : ''].filter(Boolean).join(' · ');
+      const c = carCount[z.car] || { acc: 0, old: 0, all: 0 };
+      const meta = [rsv[z.car] ? TV('car.rsv', { n: rsv[z.car] }) : '', events && c.acc ? `<b class="bad">${esc2(TV('car.acc', { n: c.acc }))}</b>` : '', events && c.old ? esc2(TV('car.old', { n: c.old })) : ''].filter(Boolean).join(' · ');
       return `<button type="button" class="car-item${focusCar === z.car ? ' on' : ''}" data-car="${z.car}" aria-pressed="${focusCar === z.car}" style="--car:${esc2(z.color)}"><i>${z.car}</i><span><b>${esc2(TV('car.label', { n: z.car }))} · ${esc2(z.name)}</b>${meta ? `<small>${meta}</small>` : ''}</span></button>`;
     }).join('');
   }
@@ -218,13 +224,16 @@
     if (!focusCar || !zoneInfo[focusCar]) { box.hidden = true; box.innerHTML = ''; return; }
     const z = zoneInfo[focusCar];
     const items = ((typeof data !== 'undefined' && data && data.items) || []).filter(i => i.car === focusCar).sort((a, b) => (a.pickupDate + a.pickupHour).localeCompare(b.pickupDate + b.pickupHour));
-    const accs = (events || []).filter(e => kindOf(e) === 'acc' && e.area && e.area.car === focusCar);
+    const accAll = (events || []).filter(e => kindOf(e) === 'acc' && e.area && e.area.car === focusCar);
+    const accNew = accAll.filter(isNewAcc), accOld = accAll.filter(e => !isNewAcc(e));
+    const accLine = e => `<br>${esc2(fmtDate(e.startDate))} (${esc2(ago(e))}) ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}`;
     box.hidden = false;
     box.style.setProperty('--car', z.color);
     box.innerHTML = `<h4><i>${focusCar}</i>${esc2(TV('car.label', { n: focusCar }))} · ${esc2(z.name)}</h4>
       <p class="muted">${esc2(T('car.d.areas'))}: ${z.districts.map(esc2).join(' · ')}</p>
       <p><b>${esc2(T('car.d.rsv'))}</b> ${items.length ? items.map(i => `<br>${esc2(i.pickupDate.slice(5))} ${String(i.pickupHour).padStart(2, '0')}시 · ${esc2(i.district)} · ${esc2(TV('unit.bags', { n: i.bags }))}`).join('') : esc2(T('car.d.none'))}</p>
-      <p><b>${esc2(T('car.d.acc'))}</b> ${events ? (accs.length ? accs.slice(0, 5).map(e => `<br>${esc2(fmtDate(e.startDate))} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}`).join('') : esc2(T('car.d.noacc'))) : esc2(T('car.d.needkey'))}</p>`;
+      <p><b>${esc2(T('car.d.acc'))}</b> ${events ? (accNew.length ? accNew.slice(0, 5).map(accLine).join('') : esc2(T('car.d.noacc'))) : esc2(T('car.d.needkey'))}</p>
+      ${events && accOld.length ? `<p class="muted"><b>${esc2(T('its.old'))}</b>${accOld.slice(0, 4).map(accLine).join('')}</p>` : ''}`;
   }
 
   // ---- LED 전광판: 선택한 호차(또는 전체)에 맞는 긴급 상황을 오른쪽 → 왼쪽으로 흘려 보낸다
@@ -232,26 +241,27 @@
   function tickerItems() {
     const out = [], sel = focusCar;
     const D = (typeof data !== 'undefined' && data) || null;
-    const accs = (events || []).filter(e => kindOf(e) === 'acc');
     const inZone = sel ? (events || []).filter(e => e.area && e.area.car === sel) : (events || []);
     const hasKey = !!store.get(KEY);
     if (!hasKey) out.push({ lv: 'info', t: T('tk.nokey') });
     else if (evErr) out.push({ lv: 'info', t: TV('tk.err', { r: evErr }) });
     else if (events) {
-      const a = sel ? inZone.filter(e => kindOf(e) === 'acc') : accs;
-      if (a.length) {
-        if (sel) out.push({ lv: 'emerg', t: TV('tk.accZone', { n: sel, a: a.length }) });
+      const accIn = inZone.filter(e => kindOf(e) === 'acc');
+      const fresh = accIn.filter(isNewAcc), stale = accIn.filter(e => !isNewAcc(e));
+      if (fresh.length) {
+        if (sel) out.push({ lv: 'emerg', t: TV('tk.accZone', { n: sel, a: fresh.length }) });
         else {
-          const by = {}; for (const e of a) { const c = e.area && e.area.car ? TV('car.label', { n: e.area.car }) : T('car.none'); by[c] = (by[c] || 0) + 1; }
-          out.push({ lv: 'emerg', t: TV('tk.accAll', { n: a.length }) + ' — ' + Object.entries(by).slice(0, 6).map(([k, n]) => TV('tk.accBy', { label: k, n })).join(', ') });
+          const by = {}; for (const e of fresh) { const c = e.area && e.area.car ? TV('car.label', { n: e.area.car }) : T('car.none'); by[c] = (by[c] || 0) + 1; }
+          out.push({ lv: 'emerg', t: TV('tk.accAll', { n: fresh.length }) + ' — ' + Object.entries(by).slice(0, 6).map(([k, n]) => TV('tk.accBy', { label: k, n })).join(', ') });
         }
-        for (const e of a.slice(0, 4)) out.push({ lv: 'emerg', t: TV('tk.acc', { t: fmtDate(e.startDate), road: e.roadName || '', dir: e.roadDrcType || '', msg: String(e.message || '').slice(0, 40) }).replace(/\s+/g, ' ').trim() + (!sel && e.area && e.area.car ? ` (${TV('car.label', { n: e.area.car })})` : '') });
-      } else if (sel) out.push({ lv: 'ok', t: TV('tk.accNone', { n: sel }) });
+        for (const e of fresh.slice(0, 4)) out.push({ lv: 'emerg', t: TV('tk.acc', { ago: ago(e), road: e.roadName || '', dir: e.roadDrcType || '', msg: String(e.message || '').slice(0, 40) }).replace(/\s+/g, ' ').trim() + (!sel && e.area && e.area.car ? ` (${TV('car.label', { n: e.area.car })})` : '') });
+      } else out.push({ lv: 'ok', t: sel ? TV('tk.noNewZone', { n: sel }) : T('tk.noNew') });
+      if (stale.length) { const oldest = stale.reduce((m, e) => (startMs(e) < startMs(m) ? e : m), stale[0]); out.push({ lv: 'info', t: TV('tk.oldAcc', { n: stale.length, t: fmtDate(oldest.startDate) }) }); }
       const work = inZone.filter(e => kindOf(e) === 'con').length, wea = inZone.filter(e => kindOf(e) === 'wea').length;
       if (work || wea) out.push({ lv: 'info', t: TV('tk.work', { c: work, w: wea }) });
     }
     if (D && D.vehicles) {
-      for (const v of D.vehicles) if (v.over && (!sel || v.car === sel)) out.push({ lv: 'emerg', t: TV('tk.over', { car: v.car, date: v.pickupDate.slice(5), slot: v.slot, b: v.bags, m: v.max }) });
+      for (const v of D.vehicles) if (v.over && (!sel || v.car === sel)) out.push({ lv: 'warn', t: TV('tk.over', { car: v.car, date: v.pickupDate.slice(5), slot: v.slot, b: v.bags, m: v.max }) });
       const pending = (D.items || []).filter(i => i.status === '접수' && (!sel || i.car === sel)).length;
       if (pending) out.push({ lv: 'info', t: TV('tk.pending', { n: pending }) });
       if (sel) {
@@ -269,8 +279,8 @@
     const key = JSON.stringify(items) + '|' + focusCar;
     if (key === tickerKey) return; tickerKey = key; // 내용이 같으면 다시 그리지 않는다(흐르는 중에 처음으로 돌아가지 않게)
     track.innerHTML = items.map(i => `<span class="${i.lv === 'emerg' ? 'emerg' : i.lv === 'ok' ? 'ok' : ''}">${esc2(i.t)}</span>`).join('');
-    box.classList.toggle('lv-ok', !items.some(i => i.lv === 'emerg') && items.some(i => i.lv === 'ok'));
-    box.classList.toggle('lv-info', !items.some(i => i.lv === 'emerg') && !items.some(i => i.lv === 'ok'));
+    const red = items.some(i => i.lv === 'emerg'), green = !red && items.some(i => i.lv === 'ok');
+    box.classList.toggle('lv-emerg', red); box.classList.toggle('lv-ok', green); box.classList.toggle('lv-info', !red && !green);
     document.getElementById('tickerSr').textContent = items.map(i => i.t).join('. ');
     // 속도: 초당 약 90px. 화면 너비 + 글자 너비를 지나가는 시간으로 계산한다
     requestAnimationFrame(() => {
@@ -292,13 +302,12 @@
     if (!store.get(KEY)) { statusEl.className = 'map-status err'; statusEl.textContent = T('its.noKey'); return; }
     if (evErr) { statusEl.className = 'map-status err'; statusEl.textContent = TV('its.fail', { r: evErr }); return; }
     if (!events) { statusEl.textContent = T('map.loading'); return; }
-    const accs = events.filter(e => kindOf(e) === 'acc');
+    const accs = events.filter(e => kindOf(e) === 'acc'), accNew = accs.filter(isNewAcc), accOld = accs.filter(e => !isNewAcc(e));
     const when = new Date(eventsAt).toLocaleTimeString(window.i18n.lang === 'en' ? 'en-US' : 'ko-KR', { hour: '2-digit', minute: '2-digit' });
-    statusEl.textContent = TV('its.updated', { t: when, n: events.length, a: accs.length });
-    const list = accs.slice(0, 6);
-    logEl.innerHTML = list.length
-      ? `<p><b>${esc2(T('its.accList'))}</b><br>${list.map(e => `${esc2(fmtDate(e.startDate))} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}${e.area && e.area.car ? ' · ' + esc2(TV('car.label', { n: e.area.car })) : ''}`).join('<br>')}</p>`
-      : `<p>${esc2(T('its.noAcc'))}</p>`;
+    statusEl.textContent = TV('its.updated', { t: when, n: events.length, a: accNew.length, o: accOld.length });
+    const line = e => `${esc2(fmtDate(e.startDate))} (${esc2(ago(e))}) ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}${e.area && e.area.car ? ' · ' + esc2(TV('car.label', { n: e.area.car })) : ''}`;
+    logEl.innerHTML = (accNew.length ? `<p class="urgent"><b>${esc2(T('its.accList'))}</b><br>${accNew.slice(0, 6).map(line).join('<br>')}</p>` : `<p>${esc2(T('its.noAcc'))}</p>`)
+      + (accOld.length ? `<p class="muted"><b>${esc2(T('its.old'))}</b><br>${accOld.slice(0, 4).map(line).join('<br>')}</p>` : '');
   }
 
   async function loadBase() {
