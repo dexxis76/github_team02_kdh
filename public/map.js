@@ -21,7 +21,7 @@
     onAdd() {
       const d = L.DomUtil.create('div', 'leaflet-bar leaflet-control-fit');
       const a = L.DomUtil.create('a', '', d); a.href = '#'; a.role = 'button'; a.textContent = '⤢'; a.title = T('map.fit'); a.setAttribute('aria-label', T('map.fit'));
-      L.DomEvent.on(a, 'click', e => { L.DomEvent.stop(e); focusCar = 0; restyle(); fit(); });
+      L.DomEvent.on(a, 'click', e => { L.DomEvent.stop(e); selectCar(0); });
       this._a = a; return d;
     },
   });
@@ -41,44 +41,61 @@
   let pins = L.layerGroup().addTo(map), evLayer = L.layerGroup().addTo(map);
   let mode = ['zone', 'traffic', 'both'].includes(store.get('hd-map-mode')) ? store.get('hd-map-mode') : 'both';
   let focusCar = 0, loading = false;
-  const zoneColor = {}, zoneCar = {}, zoneInfo = {};
+  const zoneColor = {}, zoneCar = {}, zoneInfo = {}, districtLayers = [];
 
-  const dim = car => focusCar && car !== focusCar; // 호차를 골랐을 때 나머지는 흐리게
+  const hid = car => focusCar && car !== focusCar; // 호차를 골랐을 때 나머지는 아예 숨긴다(전체를 고르면 모두 보임)
+  window.hdSel = window.hdSel || { car: 0 };          // admin.js 가 아래 배차 카드·예약 표를 걸러 보여 줄 때 쓴다
 
   // ---- 구·시·군 경계(칠하기) · 호차 구역 외곽선 · 호차 번호 라벨
   function areaStyle(f) {
     const car = zoneCar[f.properties.n], c = zoneColor[f.properties.n] || css('--mute');
     const fill = mode === 'zone' ? .34 : mode === 'both' ? .12 : 0;
-    return { color: mode === 'traffic' ? css('--mute') : c, weight: mode === 'traffic' ? .6 : .7, opacity: dim(car) ? .12 : (mode === 'traffic' ? .5 : .55), fillColor: c, fillOpacity: dim(car) ? fill * .15 : fill };
+    return { color: mode === 'traffic' ? css('--mute') : c, weight: mode === 'traffic' ? .6 : .7, opacity: mode === 'traffic' ? .5 : .55, fillColor: c, fillOpacity: fill };
   }
   function outlineStyle(car) {
     const z = zoneInfo[car];
-    return { color: mode === 'traffic' ? css('--mute') : z.color, weight: mode === 'traffic' ? 1.4 : (focusCar === car ? 6 : 4), opacity: dim(car) ? .2 : (mode === 'traffic' ? .7 : .95), fill: false, lineJoin: 'round' };
+    return { color: mode === 'traffic' ? css('--mute') : z.color, weight: mode === 'traffic' ? 1.4 : (focusCar === car ? 6 : 4), opacity: mode === 'traffic' ? .7 : .95, fill: false, lineJoin: 'round' };
   }
   function drawLabels() {
     zoneLabels.clearLayers();
     if (mode === 'traffic' || !base || !base.zones) return;
     for (const z of base.zones) {
-      const o = outlines[z.car]; if (!o) continue;
-      const big = mode === 'zone';
-      const html = `<div class="zlabel${big ? ' big' : ''}${dim(z.car) ? ' dim' : ''}" style="--car:${esc2(z.color)}"><i>${z.car}</i><span>${esc2(z.name)}</span></div>`;
+      const o = outlines[z.car]; if (!o || hid(z.car)) continue;
+      const big = mode === 'zone' || !!focusCar;
+      const html = `<div class="zlabel${big ? ' big' : ''}" style="--car:${esc2(z.color)}"><i>${z.car}</i><span>${esc2(z.name)}</span></div>`;
       L.marker(o.center, { icon: L.divIcon({ className: '', html, iconSize: null }), interactive: true, keyboard: false })
         .on('click', () => toggleFocus(z.car)).addTo(zoneLabels);
     }
   }
   function restyle() {
-    if (areas) areas.setStyle(areaStyle);
-    for (const [car, o] of Object.entries(outlines)) o.layer.setStyle(outlineStyle(Number(car)));
+    if (areas) {
+      for (const d of districtLayers) { // 선택한 호차 구역의 구·시·군만 보인다
+        const show = !hid(zoneCar[d.name]);
+        if (show && !areas.hasLayer(d.layer)) areas.addLayer(d.layer);
+        if (!show && areas.hasLayer(d.layer)) areas.removeLayer(d.layer);
+      }
+      areas.setStyle(areaStyle);
+    }
+    for (const [car, o] of Object.entries(outlines)) {
+      const show = !hid(Number(car));
+      if (show && !outlineGroup.hasLayer(o.layer)) outlineGroup.addLayer(o.layer);
+      if (!show && outlineGroup.hasLayer(o.layer)) outlineGroup.removeLayer(o.layer);
+      o.layer.setStyle(outlineStyle(Number(car)));
+    }
+    renderTabs(); renderDetail(); renderTicker();
     drawLabels(); drawPins(); drawEvents(); renderCarList();
     document.querySelectorAll('#mapMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
     el.classList.toggle('mode-traffic', mode === 'traffic');
     labelsByZoom();
   }
-  function toggleFocus(car) {
-    focusCar = focusCar === car ? 0 : car;
-    if (focusCar && outlines[focusCar]) map.fitBounds(outlines[focusCar].layer.getBounds(), { padding: [30, 30] }); else fit();
+  // 호차 선택: 0 = 전체(한꺼번에 보기), 1~ = 그 호차 구역과 정보만
+  function selectCar(car) {
+    focusCar = car; window.hdSel.car = car;
     restyle();
+    if (focusCar && outlines[focusCar]) map.fitBounds(outlines[focusCar].layer.getBounds(), { padding: [30, 30] }); else fit();
+    window.dispatchEvent(new Event('car-select'));
   }
+  function toggleFocus(car) { selectCar(focusCar === car ? 0 : car); }
   // 글자가 겹치지 않게, 구·시·군 이름은 많이 확대했을 때만 보여 준다
   function labelsByZoom() { el.classList.toggle('nolabel', map.getZoom() < 11 || mode === 'traffic' && map.getZoom() < 12); }
   map.on('zoomend', labelsByZoom);
@@ -93,6 +110,7 @@
       areas = L.geoJSON(gj, {
         style: areaStyle,
         onEachFeature: (f, layer) => {
+          districtLayers.push({ name: f.properties.n, layer });
           layer.bindTooltip(f.properties.n, { permanent: true, direction: 'center', className: 'area-label' });
           layer.bindPopup(() => { const c = zoneCar[f.properties.n]; return `<b>${esc2(f.properties.n)}</b><br>${c ? esc2(TV('car.label', { n: c })) + ' · ' + esc2(zoneInfo[c].name) : esc2(T('car.none'))}`; });
           layer.on('mouseover', () => layer.setStyle({ weight: 2 }));
@@ -119,8 +137,9 @@
     for (const i of ((typeof data !== 'undefined' && data && data.items) || [])) cnt[i.district] = (cnt[i.district] || 0) + 1;
     for (const [d, n] of Object.entries(cnt)) {
       const c = base.centers[d]; if (!c) continue;
-      const car = zoneCar[d], size = 24 + Math.min(n, 5) * 3, col = zoneColor[d] || css('--cta');
-      L.marker(c, { icon: L.divIcon({ className: '', html: `<div class="rsv-pin${dim(car) ? ' dim' : ''}" style="width:${size}px;height:${size}px;background:${col}">${n}</div>`, iconSize: [size, size] }), zIndexOffset: 200 })
+      const car = zoneCar[d]; if (hid(car)) continue;
+      const size = 24 + Math.min(n, 5) * 3, col = zoneColor[d] || css('--cta');
+      L.marker(c, { icon: L.divIcon({ className: '', html: `<div class="rsv-pin" style="width:${size}px;height:${size}px;background:${col}">${n}</div>`, iconSize: [size, size] }), zIndexOffset: 200 })
         .bindTooltip(`${esc2(d)} · ${car ? esc2(TV('car.label', { n: car })) + ' · ' : ''}${n}`, { direction: 'top' }).addTo(pins);
     }
     for (const k of ['T1', 'T2']) {
@@ -151,14 +170,14 @@
     if (events && base) {
       for (const e of events) {
         const car = e.area && e.area.car; if (car) { const c = carCount[car] = carCount[car] || { acc: 0, all: 0 }; c.all++; if (kindOf(e) === 'acc') c.acc++; }
-        if (mode === 'zone') continue; // 배차 구역만 볼 때는 교통 점을 그리지 않는다
+        if (mode === 'zone' || hid(car)) continue; // 배차 구역만 볼 때, 또는 다른 호차 구역의 점은 그리지 않는다
         const k = kindOf(e), col = css(KINDS[k].c), size = mode === 'traffic' ? 26 : 20;
         const where = e.area ? `${esc2(e.area.district)}${car ? ' · ' + esc2(TV('car.label', { n: car })) : ''}` : '';
-        L.marker([e.lat, e.lon], { icon: L.divIcon({ className: '', html: `<div class="ev-pin ${k}${dim(car) ? ' dim' : ''}" style="background:${col};width:${size}px;height:${size}px;font-size:${size - 8}px;line-height:${size - 4}px">${k === 'acc' ? '!' : ''}</div>`, iconSize: [size, size] }), zIndexOffset: k === 'acc' ? 800 : 500 })
+        L.marker([e.lat, e.lon], { icon: L.divIcon({ className: '', html: `<div class="ev-pin ${k}" style="background:${col};width:${size}px;height:${size}px;font-size:${size - 8}px;line-height:${size - 4}px">${k === 'acc' ? '!' : ''}</div>`, iconSize: [size, size] }), zIndexOffset: k === 'acc' ? 800 : 500 })
           .bindPopup(`<b>${esc2(T(KINDS[k].t))}</b> ${esc2(e.eventDetailType || '')}<br>${esc2(e.type || '')} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}<br><small>${esc2(fmtDate(e.startDate))}${where ? ' · ' + where : ''}</small><br>${esc2(String(e.message || '').slice(0, 160))}`).addTo(evLayer);
       }
     }
-    applyBadges(); renderCarList();
+    applyBadges(); renderCarList(); renderTicker();
   }
   // 호차 카드(아래 배차 추천)에 구역 안 사고·돌발 건수 표시. 카드는 10초마다 다시 그려지므로 그때마다 다시 붙인다
   function applyBadges() {
@@ -183,6 +202,82 @@
     }).join('');
   }
   carListEl.addEventListener('click', e => { const b = e.target.closest('.car-item'); if (b) toggleFocus(Number(b.dataset.car)); });
+  document.getElementById('carTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) selectCar(Number(b.dataset.car)); });
+
+  // ---- 호차 버튼(탭): 전체 / 1호차 … 누르면 그 호차 구역과 정보만 보인다
+  function renderTabs() {
+    const el2 = document.getElementById('carTabs'); if (!el2 || !base || !base.zones) return;
+    el2.innerHTML = `<button type="button" role="tab" data-car="0" aria-selected="${!focusCar}" class="tab-all">${esc2(T('tab.all'))}</button>` + base.zones.map(z =>
+      `<button type="button" role="tab" data-car="${z.car}" aria-selected="${focusCar === z.car}" style="--car:${esc2(z.color)}"><i>${z.car}</i>${esc2(TV('car.label', { n: z.car }))}</button>`).join('');
+    document.getElementById('carOnly').hidden = !focusCar;
+    if (focusCar) document.getElementById('carOnlyText').textContent = TV('car.only', { n: focusCar, name: zoneInfo[focusCar] ? zoneInfo[focusCar].name : '' });
+  }
+  // 선택한 호차의 상세: 담당 지역 · 예약 · 구역 안 사고
+  function renderDetail() {
+    const box = document.getElementById('carDetail'); if (!box) return;
+    if (!focusCar || !zoneInfo[focusCar]) { box.hidden = true; box.innerHTML = ''; return; }
+    const z = zoneInfo[focusCar];
+    const items = ((typeof data !== 'undefined' && data && data.items) || []).filter(i => i.car === focusCar).sort((a, b) => (a.pickupDate + a.pickupHour).localeCompare(b.pickupDate + b.pickupHour));
+    const accs = (events || []).filter(e => kindOf(e) === 'acc' && e.area && e.area.car === focusCar);
+    box.hidden = false;
+    box.style.setProperty('--car', z.color);
+    box.innerHTML = `<h4><i>${focusCar}</i>${esc2(TV('car.label', { n: focusCar }))} · ${esc2(z.name)}</h4>
+      <p class="muted">${esc2(T('car.d.areas'))}: ${z.districts.map(esc2).join(' · ')}</p>
+      <p><b>${esc2(T('car.d.rsv'))}</b> ${items.length ? items.map(i => `<br>${esc2(i.pickupDate.slice(5))} ${String(i.pickupHour).padStart(2, '0')}시 · ${esc2(i.district)} · ${esc2(TV('unit.bags', { n: i.bags }))}`).join('') : esc2(T('car.d.none'))}</p>
+      <p><b>${esc2(T('car.d.acc'))}</b> ${events ? (accs.length ? accs.slice(0, 5).map(e => `<br>${esc2(fmtDate(e.startDate))} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}`).join('') : esc2(T('car.d.noacc'))) : esc2(T('car.d.needkey'))}</p>`;
+  }
+
+  // ---- LED 전광판: 선택한 호차(또는 전체)에 맞는 긴급 상황을 오른쪽 → 왼쪽으로 흘려 보낸다
+  let tickerKey = '';
+  function tickerItems() {
+    const out = [], sel = focusCar;
+    const D = (typeof data !== 'undefined' && data) || null;
+    const accs = (events || []).filter(e => kindOf(e) === 'acc');
+    const inZone = sel ? (events || []).filter(e => e.area && e.area.car === sel) : (events || []);
+    const hasKey = !!store.get(KEY);
+    if (!hasKey) out.push({ lv: 'info', t: T('tk.nokey') });
+    else if (evErr) out.push({ lv: 'info', t: TV('tk.err', { r: evErr }) });
+    else if (events) {
+      const a = sel ? inZone.filter(e => kindOf(e) === 'acc') : accs;
+      if (a.length) {
+        if (sel) out.push({ lv: 'emerg', t: TV('tk.accZone', { n: sel, a: a.length }) });
+        else {
+          const by = {}; for (const e of a) { const c = e.area && e.area.car ? TV('car.label', { n: e.area.car }) : T('car.none'); by[c] = (by[c] || 0) + 1; }
+          out.push({ lv: 'emerg', t: TV('tk.accAll', { n: a.length }) + ' — ' + Object.entries(by).slice(0, 6).map(([k, n]) => TV('tk.accBy', { label: k, n })).join(', ') });
+        }
+        for (const e of a.slice(0, 4)) out.push({ lv: 'emerg', t: TV('tk.acc', { t: fmtDate(e.startDate), road: e.roadName || '', dir: e.roadDrcType || '', msg: String(e.message || '').slice(0, 40) }).replace(/\s+/g, ' ').trim() + (!sel && e.area && e.area.car ? ` (${TV('car.label', { n: e.area.car })})` : '') });
+      } else if (sel) out.push({ lv: 'ok', t: TV('tk.accNone', { n: sel }) });
+      const work = inZone.filter(e => kindOf(e) === 'con').length, wea = inZone.filter(e => kindOf(e) === 'wea').length;
+      if (work || wea) out.push({ lv: 'info', t: TV('tk.work', { c: work, w: wea }) });
+    }
+    if (D && D.vehicles) {
+      for (const v of D.vehicles) if (v.over && (!sel || v.car === sel)) out.push({ lv: 'emerg', t: TV('tk.over', { car: v.car, date: v.pickupDate.slice(5), slot: v.slot, b: v.bags, m: v.max }) });
+      const pending = (D.items || []).filter(i => i.status === '접수' && (!sel || i.car === sel)).length;
+      if (pending) out.push({ lv: 'info', t: TV('tk.pending', { n: pending }) });
+      if (sel) {
+        const mine = D.items.filter(i => i.car === sel); const b = mine.reduce((n, i) => n + i.bags, 0);
+        out.push({ lv: 'info', t: TV('tk.rsv', { n: sel, r: mine.length, b }) });
+        const moved = mine.filter(i => i.moved).length; if (moved) out.push({ lv: 'info', t: TV('tk.moved', { n: moved }) });
+      }
+    }
+    if (!out.some(x => x.lv === 'emerg') && hasKey && events && !evErr) out.unshift({ lv: 'ok', t: T('tk.ok') });
+    return out;
+  }
+  function renderTicker() {
+    const box = document.getElementById('ticker'), track = document.getElementById('tickerTrack'); if (!box || !track) return;
+    const items = tickerItems();
+    const key = JSON.stringify(items) + '|' + focusCar;
+    if (key === tickerKey) return; tickerKey = key; // 내용이 같으면 다시 그리지 않는다(흐르는 중에 처음으로 돌아가지 않게)
+    track.innerHTML = items.map(i => `<span class="${i.lv === 'emerg' ? 'emerg' : i.lv === 'ok' ? 'ok' : ''}">${esc2(i.t)}</span>`).join('');
+    box.classList.toggle('lv-ok', !items.some(i => i.lv === 'emerg') && items.some(i => i.lv === 'ok'));
+    box.classList.toggle('lv-info', !items.some(i => i.lv === 'emerg') && !items.some(i => i.lv === 'ok'));
+    document.getElementById('tickerSr').textContent = items.map(i => i.t).join('. ');
+    // 속도: 초당 약 90px. 화면 너비 + 글자 너비를 지나가는 시간으로 계산한다
+    requestAnimationFrame(() => {
+      const view = track.parentElement.clientWidth, w = track.scrollWidth;
+      track.style.setProperty('--vw', view + 'px'); track.style.setProperty('--dur', Math.max(12, (view + w) / 90) + 's');
+    });
+  }
 
   // ---- 상태 문구 · 사고 목록 · 키 입력
   function keyBox() {
@@ -243,9 +338,11 @@
       map.invalidateSize(false); // 숨겨진 상태에서 만들어졌으므로 보이는 크기로 다시 계산
       await loadBase(); loadAreas(); loadTraffic();
       setInterval(() => { if (!document.hidden && !document.getElementById('app').hidden) loadTraffic(); }, 5 * 60e3);
-    } else { drawPins(); applyBadges(); renderCarList(); }
+    } else { drawPins(); applyBadges(); renderCarList(); renderDetail(); renderTicker(); }
   });
   document.getElementById('mapRefresh').addEventListener('click', loadTraffic);
+  document.getElementById('tickerBtn').addEventListener('click', e => { const box = document.getElementById('ticker'); const on = box.classList.toggle('paused'); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = on ? '▶' : '⏸'; });
+  window.addEventListener('resize', () => { tickerKey = ''; renderTicker(); });
   document.getElementById('mapMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.mode; store.set('hd-map-mode', mode); restyle(); });
   document.getElementById('itsSave').addEventListener('click', () => {
     const v = document.getElementById('itsKey').value.trim(); if (!v) return;
@@ -254,7 +351,7 @@
   document.getElementById('itsKey').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('itsSave').click(); } });
   document.getElementById('itsClear').addEventListener('click', () => { store.set(KEY, ''); events = null; evErr = null; drawEvents(); renderStatus(); });
   window.addEventListener('themechange', () => { setTiles(); restyle(); });
-  window.addEventListener('langchange', () => { setZones(); restyle(); renderStatus(); if (fitCtl._a) fitCtl._a.title = T('map.fit'); });
+  window.addEventListener('langchange', () => { tickerKey = ''; setZones(); restyle(); renderStatus(); if (fitCtl._a) fitCtl._a.title = T('map.fit'); });
   window.addEventListener('resize', () => map.invalidateSize());
   renderStatus();
   restyle();
