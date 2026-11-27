@@ -20,6 +20,10 @@
     </nav>
     <div class="tools">
       <span class="demo-pill" data-i18n="demo">데모 서비스</span>
+      <span class="admin-badge" id="adminBadge" hidden role="status">
+        <i class="admin-dot" aria-hidden="true"></i><b data-i18n="adm.loggedIn">관리자 로그인 중</b>
+        <button type="button" class="admin-out" id="adminOut" data-i18n="adm.logout">로그아웃</button>
+      </span>
       <div class="lang" role="group" aria-label="언어 선택" data-i18n-attr="aria-label:lang.label">
         <button type="button" class="lang-btn" data-lang="ko" aria-pressed="true">한국어</button>
         <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
