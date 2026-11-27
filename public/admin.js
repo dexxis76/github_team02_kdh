@@ -64,7 +64,7 @@ function render() {
   $('#cars').innerHTML = (data.cars || []).map(c => {
     const vs = data.vehicles.filter(v => v.car === c.car);
     const n = vs.reduce((a, v) => a + v.tags.length, 0), bg = vs.reduce((a, v) => a + v.bags, 0), over = vs.some(v => v.over);
-    return `<article class="carcard" style="--car:${esc(c.color)}"><h4><i>${c.car}</i>${esc(t('car.label', { n: c.car }))} · ${esc(c.name)}</h4>
+    return `<article class="carcard" data-car="${c.car}" style="--car:${esc(c.color)}"><h4><i>${c.car}</i>${esc(t('car.label', { n: c.car }))} · ${esc(c.name)}</h4>
       <p class="muted">${esc(t('car.count', { n, b: bg }))}${over ? ` · <b class="bad">${esc(t('veh.over'))}</b>` : ''}</p>
       <p class="areas">${c.districts.map(esc).join(' · ')}</p></article>`;
   }).join('');

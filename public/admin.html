@@ -49,20 +49,26 @@
   <div class="wrap">
     <h2 class="en" data-i18n="map.en" style="font-size:44px">Live Map</h2>
     <p class="ko" data-i18n="map.ko" style="font-size:26px">서울·경기 실시간 지도</p>
-    <p class="desc" data-i18n="map.desc">ITS 실시간 교통정보로 서울과 경기도의 도로 혼잡을 보여 줘요.</p>
+    <p class="desc" data-i18n="map.desc">서울·경기 호차 구역 위에 예약 위치와 ITS 실시간 사고·공사 지점을 겹쳐 보여 줘요.</p>
     <div class="map-grid">
       <div class="map-box"><div id="mapEl" class="mapEl" role="region" aria-label="지도" data-i18n-attr="aria-label:map.canvas"></div></div>
       <aside class="map-side">
         <button type="button" class="pill" id="mapRefresh" data-i18n="map.refresh">새로고침</button>
         <p class="map-status" id="mapStatus" aria-live="polite"></p>
+        <div class="its-box" id="itsKeyBox">
+          <form class="its-form" onsubmit="return false" autocomplete="off">
+            <label for="itsKey" data-i18n="its.keyLabel">ITS 인증키</label>
+            <div class="its-row"><input id="itsKey" type="password" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder:its.keyPh"><button type="button" class="pill" id="itsSave" data-i18n="its.connect">연결</button></div>
+            <small data-i18n="its.keyNote">키는 이 브라우저에만 저장되고 서버로 보내지 않아요.</small>
+          </form>
+          <p class="its-have" hidden><span data-i18n="its.connected">ITS 연결에 쓰는 키가 이 브라우저에 저장돼 있어요.</span> <button type="button" class="link-btn" id="itsClear" data-i18n="its.clear">키 지우기</button></p>
+        </div>
         <p class="map-hint" data-i18n="map.hint">마우스 휠, +/− 버튼, 더블클릭으로 확대·축소하고 끌어서 옮길 수 있어요.</p>
         <div class="legend" aria-label="범례" data-i18n-attr="aria-label:map.legend">
-          <span><i style="background:var(--c1)"></i><b data-i18n="map.l1">원활</b></span>
-          <span><i style="background:var(--c2)"></i><b data-i18n="map.l2">서행</b></span>
-          <span><i style="background:var(--c3)"></i><b data-i18n="map.l3">지체</b></span>
-          <span><i style="background:var(--c4)"></i><b data-i18n="map.l4">정체</b></span>
           <span id="carLegend" class="car-legend"></span>
           <span><i class="dot" style="background:var(--cta)"></i><b data-i18n="map.pick">예약 위치</b></span>
+          <span><i class="dot" style="background:var(--c3)"></i><b data-i18n="its.k.acc">사고</b></span>
+          <span><i class="dot" style="background:var(--c2)"></i><b data-i18n="its.k.con">공사</b></span>
           <span><i class="dot sq" style="background:var(--red)"></i><b data-i18n="map.airport">인천공항</b></span>
         </div>
         <div class="route-log" id="routeLog" aria-live="polite"></div>
