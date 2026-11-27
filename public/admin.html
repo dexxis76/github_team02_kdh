@@ -86,10 +86,11 @@
             </form>
             <p class="its-have" hidden><span data-i18n="its.connected">ITS 연결에 쓰는 키가 이 브라우저에 저장돼 있어요.</span> <button type="button" class="link-btn" id="itsClear" data-i18n="its.clear">키 지우기</button></p>
           </div>
+          <label class="chk"><input type="checkbox" id="evOthers"><span data-i18n="its.showOthers">공사·기상 등 사고가 아닌 돌발정보도 보기</span></label>
           <div class="legend" aria-label="범례" data-i18n-attr="aria-label:map.legend">
             <span><i class="dot ev acc"></i><b data-i18n="its.k.acc">사고</b></span>
-            <span><i class="dot ev con"></i><b data-i18n="its.k.con">공사</b></span>
-            <span><i class="dot ev wea"></i><b data-i18n="its.k.wea">기상·재난</b></span>
+            <span class="lg-other"><i class="dot ev con"></i><b data-i18n="its.k.con">공사</b></span>
+            <span class="lg-other"><i class="dot ev wea"></i><b data-i18n="its.k.wea">기상·재난</b></span>
             <span><i class="dot" style="background:var(--cta)"></i><b data-i18n="map.pick">예약 위치</b></span>
             <span><i class="dot sq" style="background:var(--red)"></i><b data-i18n="map.airport">인천공항</b></span>
           </div>

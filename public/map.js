@@ -152,15 +152,19 @@
   // ---- ITS 돌발정보(사고·공사 등): 관리자 PC 의 브라우저가 ITS 를 직접 부른다(서버는 ITS 접속이 막혀 있음)
   // 키는 이 브라우저(localStorage)에만 저장하고 서버·저장소에는 보내지 않는다.
   const KEY = 'hd-its-key';
-  let events = null, evErr = null, eventsAt = null, carCount = {};
+  let events = null, eventsRaw = null, evErr = null, eventsAt = null, carCount = {};
   const KINDS = { acc: { c: '--c3', t: 'its.k.acc' }, con: { c: '--c2', t: 'its.k.con' }, wea: { c: '--zone5', t: 'its.k.wea' }, etc: { c: '--c0', t: 'its.k.etc' } };
   const kindOf = e => (/사고|acc/i.test(e.eventType) ? 'acc' : /공사|cor|con/i.test(e.eventType) ? 'con' : /기상|재난|wea|dis/i.test(e.eventType) ? 'wea' : 'etc');
   // 「긴급」은 시작한 지 30분 이내의 사고만. 오래전에 시작해 아직 처리 중인 사고는 긴급이 아니라 「진행 중」으로 따로 보여 준다.
-  const RECENT_MIN = 30;
+  const RECENT_MIN = 30, HIDE_MIN = 30; // 시작한 지 30분 이내의 사고만 표시한다. 30분이 지나면 지도·목록·전광판에서 모두 뺀다
   const startMs = e => { const m = String(e.startDate || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?/); return m ? Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] || '00'}+09:00`) : NaN; }; // ITS 시각은 한국 시간
   const ageMin = e => (Date.now() - startMs(e)) / 60000;
   const isNewAcc = e => kindOf(e) === 'acc' && ageMin(e) <= RECENT_MIN && ageMin(e) >= -10; // 시계 오차 10분까지 허용
   const ago = e => { const m = ageMin(e); if (!Number.isFinite(m)) return ''; return m < 1 ? T('its.now') : m < 60 ? TV('its.ago.m', { n: Math.floor(m) }) : m < 1440 ? TV('its.ago.h', { n: Math.floor(m / 60) }) : TV('its.ago.d', { n: Math.floor(m / 1440) }); };
+  // 기본은 「30분 이내 사고」만. 공사·기상 같은 사고가 아닌 돌발정보는 선택했을 때만 보인다(시각을 읽지 못한 사고는 숨기지 않고 남겨 둔다)
+  const showOthers = () => store.get('hd-ev-others') === '1';
+  const prune = () => { events = eventsRaw ? eventsRaw.filter(e => (kindOf(e) === 'acc' ? !(ageMin(e) > HIDE_MIN) : showOthers())) : null; };
+  const eventSig = () => (events || []).map(e => `${e.linkId}|${e.startDate}|${isNewAcc(e) ? 1 : 0}`).join(',');
   const fmtDate = v => { const m = String(v || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/); return m ? `${m[2]}/${m[3]} ${m[4]}:${m[5]}` : ''; };
   // 사고 지점이 어느 호차 구역인지: 가장 가까운 구·시·군 중심의 호차 (20km 안에 없으면 서비스 지역 밖)
   function carOfPoint(lat, lon) {
@@ -172,6 +176,7 @@
     return best && best.km <= 20 ? { car: zoneCar[best.d] || 0, district: best.d } : null;
   }
   function drawEvents() {
+    prune(); // 40분 넘은 사고는 여기서 걸러진다
     evLayer.clearLayers(); carCount = {};
     if (events && base) {
       for (const e of events) {
@@ -183,7 +188,7 @@
           .bindPopup(`<b>${esc2(T(KINDS[k].t))}</b> ${esc2(e.eventDetailType || '')}<br>${esc2(e.type || '')} ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}<br><small>${esc2(fmtDate(e.startDate))}${ago(e) ? ' (' + esc2(ago(e)) + ')' : ''}${where ? ' · ' + where : ''}</small><br>${esc2(String(e.message || '').slice(0, 160))}`).addTo(evLayer);
       }
     }
-    applyBadges(); renderCarList(); renderTicker();
+    applyBadges(); renderCarList(); renderTicker(); renderStatus(); // 시간이 지나 사라진 사고가 오른쪽 상태 문구·목록에도 바로 반영되게
   }
   // 호차 카드(아래 배차 추천)에 구역 안 사고·돌발 건수 표시. 카드는 10초마다 다시 그려지므로 그때마다 다시 붙인다
   function applyBadges() {
@@ -192,7 +197,7 @@
       if (!events) return;
       const c = carCount[card.dataset.car] || { acc: 0, old: 0, all: 0 };
       const b = document.createElement('p'); b.className = 'its-badge' + (c.acc ? ' warn' : '');
-      b.textContent = TV('its.badge', { a: c.acc, o: c.old, n: c.all }); card.appendChild(b);
+      b.textContent = TV('its.badge', { a: c.acc }); card.appendChild(b);
     });
   }
 
@@ -304,7 +309,7 @@
     if (!events) { statusEl.textContent = T('map.loading'); return; }
     const accs = events.filter(e => kindOf(e) === 'acc'), accNew = accs.filter(isNewAcc), accOld = accs.filter(e => !isNewAcc(e));
     const when = new Date(eventsAt).toLocaleTimeString(window.i18n.lang === 'en' ? 'en-US' : 'ko-KR', { hour: '2-digit', minute: '2-digit' });
-    statusEl.textContent = TV('its.updated', { t: when, n: events.length, a: accNew.length, o: accOld.length });
+    statusEl.textContent = TV('its.updated', { t: when, a: accNew.length }) + (showOthers() ? TV('its.others', { n: events.filter(e => kindOf(e) !== 'acc').length }) : '');
     const line = e => `${esc2(fmtDate(e.startDate))} (${esc2(ago(e))}) ${esc2(e.roadName || '')} ${esc2(e.roadDrcType || '')}${e.area && e.area.car ? ' · ' + esc2(TV('car.label', { n: e.area.car })) : ''}`;
     logEl.innerHTML = (accNew.length ? `<p class="urgent"><b>${esc2(T('its.accList'))}</b><br>${accNew.slice(0, 6).map(line).join('<br>')}</p>` : `<p>${esc2(T('its.noAcc'))}</p>`)
       + (accOld.length ? `<p class="muted"><b>${esc2(T('its.old'))}</b><br>${accOld.slice(0, 4).map(line).join('<br>')}</p>` : '');
@@ -328,11 +333,11 @@
       if (code != null && String(code) !== '0') throw new Error(`resultCode ${code}${j.header.resultMsg ? ' · ' + j.header.resultMsg : ''}`);
       let it = (j.body && j.body.items) || [];
       if (!Array.isArray(it)) it = it.item ? [].concat(it.item) : [];
-      events = it.map(e => ({ ...e, lat: parseFloat(e.coordY), lon: parseFloat(e.coordX) }))
+      eventsRaw = it.map(e => ({ ...e, lat: parseFloat(e.coordY), lon: parseFloat(e.coordX) }))
         .filter(e => Number.isFinite(e.lat) && Number.isFinite(e.lon) && e.lat >= b.minLat && e.lat <= b.maxLat && e.lon >= b.minLon && e.lon <= b.maxLon)
         .map(e => ({ ...e, area: carOfPoint(e.lat, e.lon) }));
-      events.sort((x, y) => String(y.startDate).localeCompare(String(x.startDate)));
-      eventsAt = Date.now(); evErr = null;
+      eventsRaw.sort((x, y) => String(y.startDate).localeCompare(String(x.startDate)));
+      prune(); eventsAt = Date.now(); evErr = null;
     } catch (e) {
       evErr = String(e.message || e).split(key).join('***');
       if (/Failed to fetch|NetworkError|Load failed/i.test(evErr)) evErr = T('its.cors');
@@ -349,6 +354,11 @@
       setInterval(() => { if (!document.hidden && !document.getElementById('app').hidden) loadTraffic(); }, 5 * 60e3);
     } else { drawPins(); applyBadges(); renderCarList(); renderDetail(); renderTicker(); }
   });
+  setInterval(() => { if (!eventsRaw || document.hidden) return; const before = eventSig(); prune(); if (eventSig() !== before) { drawEvents(); renderStatus(); } }, 30e3);
+  const othersBox = document.getElementById('evOthers');
+  const syncOthers = () => { othersBox.checked = showOthers(); document.querySelector('.legend')?.classList.toggle('no-others', !showOthers()); };
+  othersBox.addEventListener('change', () => { store.set('hd-ev-others', othersBox.checked ? '1' : ''); syncOthers(); drawEvents(); renderStatus(); });
+  syncOthers();
   document.getElementById('mapRefresh').addEventListener('click', loadTraffic);
   document.getElementById('tickerBtn').addEventListener('click', e => { const box = document.getElementById('ticker'); const on = box.classList.toggle('paused'); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = on ? '▶' : '⏸'; });
   window.addEventListener('resize', () => { tickerKey = ''; renderTicker(); });
@@ -359,10 +369,10 @@
   document.getElementById('mapMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.mode; store.set('hd-map-mode', mode); restyle(); });
   document.getElementById('itsSave').addEventListener('click', () => {
     const v = document.getElementById('itsKey').value.trim(); if (!v) return;
-    store.set(KEY, v); document.getElementById('itsKey').value = ''; evErr = null; events = null; renderStatus(); loadTraffic();
+    store.set(KEY, v); document.getElementById('itsKey').value = ''; evErr = null; events = null; eventsRaw = null; renderStatus(); loadTraffic();
   });
   document.getElementById('itsKey').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('itsSave').click(); } });
-  document.getElementById('itsClear').addEventListener('click', () => { store.set(KEY, ''); events = null; evErr = null; drawEvents(); renderStatus(); });
+  document.getElementById('itsClear').addEventListener('click', () => { store.set(KEY, ''); events = null; eventsRaw = null; evErr = null; drawEvents(); renderStatus(); });
   window.addEventListener('themechange', () => { setTiles(); restyle(); });
   window.addEventListener('langchange', () => { tickerKey = ''; setZones(); restyle(); renderStatus(); if (fitCtl._a) fitCtl._a.title = T('map.fit'); });
   window.addEventListener('resize', () => map.invalidateSize());

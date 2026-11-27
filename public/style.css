@@ -517,3 +517,7 @@ tr:last-child td { border-bottom: 0; }
 .ev-pin.old { opacity: .55; }
 .route-log p.urgent { border-left-color: var(--red); }
 @media (prefers-reduced-motion: reduce) { .ev-pin.new { animation: none; } }
+
+.chk { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sub); cursor: pointer; }
+.chk input { width: 16px; height: 16px; }
+.legend.no-others .lg-other { display: none; }
